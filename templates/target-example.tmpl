@@ -1,0 +1,40 @@
+---
+claude_mode: command
+description: "Example showing .Target usage"
+globs: "**/*.js,**/*.ts"
+---
+
+# Code Review Guidelines
+
+{{if eq .Target "cursor"}}
+## Cursor Instructions
+This rule will automatically trigger when you work on JS/TS files.
+- The rule appears in Cursor's rules panel
+- Automatically applied based on file patterns
+- No manual invocation needed
+
+{{else if eq .Target "claude"}}
+## Claude Code Instructions
+Use `/code-review` to get code review feedback.
+- This creates a slash command in Claude Code
+- You can invoke it manually when needed
+- Supports interactive code analysis
+
+{{else if eq .Target "cline"}}
+## Cline Instructions
+Reference these guidelines during code review discussions.
+- Available as context in your Cline conversations
+- No special invocation - just part of system prompt
+
+{{else if eq .Target "copilot"}}
+## GitHub Copilot Instructions
+These guidelines will influence code suggestions and completions.
+- Affects autocomplete suggestions
+- Influences generated code patterns
+- Works passively during coding
+{{end}}
+
+## Common Guidelines
+- Check for proper error handling
+- Verify consistent naming conventions
+- Ensure adequate test coverage

@@ -1,0 +1,58 @@
+---
+claude_mode: command
+description: Generate comprehensive tests for a given function or module
+arguments: target_code
+---
+
+# Generate Tests
+
+Generate comprehensive tests for: `$ARGUMENTS`
+
+## Test Generation Guidelines
+
+### Test Types to Create
+1. **Unit Tests**: Test individual functions in isolation
+2. **Integration Tests**: Test component interactions
+3. **Edge Case Tests**: Test boundary conditions and error scenarios
+4. **Performance Tests**: Verify performance requirements (if applicable)
+
+### Test Coverage Requirements
+- **Happy Path**: Normal operation scenarios
+- **Error Cases**: Invalid inputs and error conditions
+- **Edge Cases**: Boundary values and corner cases
+- **Mock External Dependencies**: Database calls, API requests, file operations
+
+### Test Structure
+```
+describe('FunctionName', () => {
+  beforeEach(() => {
+    // Setup code
+  });
+
+  afterEach(() => {
+    // Cleanup code
+  });
+
+  it('should handle normal case', () => {
+    // Test implementation
+  });
+
+  it('should handle error case', () => {
+    // Error test implementation
+  });
+});
+```
+
+### Test Data
+- Use realistic test data that represents actual usage
+- Include both valid and invalid inputs
+- Test with empty, null, and undefined values
+- Use data that exercises different code paths
+
+### Assertions
+- Test return values and side effects
+- Verify state changes
+- Check error messages and types
+- Validate performance characteristics
+
+Please analyze the provided code and generate a comprehensive test suite that covers all scenarios.

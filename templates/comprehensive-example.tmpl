@@ -1,0 +1,179 @@
+---
+claude_mode: both
+description: "Comprehensive development guide demonstrating all available template features"
+globs: "**/*"
+---
+
+# {{title .Name}} - Template Features Guide
+
+## Available Template Variables (Actually Working)
+
+### Core Variables
+- **Target Platform**: {{.Target}}
+- **Template Name**: {{.Name}}  
+- **Description**: {{.Description}}
+- **File Patterns**: {{.Globs}}
+{{if .Mode}}
+- **Claude Mode**: {{.Mode}}
+{{end}}
+
+## Template Functions Examples
+
+### String Manipulation Functions
+- **Lowercase**: {{lower "EXAMPLE TEXT"}} 
+- **Uppercase**: {{upper "example text"}}
+- **Title Case**: {{title "example text"}}
+- **Replace**: {{replace "This is old text" "old" "new"}}
+- **Contains**: {{if contains .Name "comprehensive"}}✅ Name contains 'comprehensive'{{else}}❌ Name doesn't contain 'comprehensive'{{end}}
+- **Join**: Use with arrays from YAML front matter or other sources
+
+### Target-Specific Conditional Logic
+{{if eq .Target "cursor"}}
+## Cursor-Specific Instructions
+This rule is automatically applied in Cursor IDE with the following configuration:
+- Description: {{.Description}}
+- Globs: {{.Globs}}
+- Auto-applied for matching file patterns
+
+{{else if eq .Target "claude"}}
+## Claude Code Instructions
+Use `/{{lower .Name}} [your-request]` for targeted assistance.
+Your input will be available as: $ARGUMENTS
+
+- Installation Mode: {{.Mode}}
+{{if eq .Mode "memory"}}
+- This rule provides persistent project context
+{{else if eq .Mode "command"}}
+- This rule is available as a slash command: `/{{lower .Name}}`
+{{else if eq .Mode "both"}}
+- This rule provides both persistent context AND slash command: `/{{lower .Name}}`
+{{end}}
+
+{{else if eq .Target "cline"}}
+## Cline/Roo Instructions
+This rule provides development guidance and will be available in your Cline/Roo assistant.
+
+{{else if eq .Target "copilot"}}
+## GitHub Copilot Instructions
+These instructions will guide code suggestions and completions in your IDE.
+{{end}}
+
+## Advanced Template Features
+
+### String Case Manipulation
+- Original name: `{{.Name}}`
+- Lowercase: `{{lower .Name}}`
+- Uppercase: `{{upper .Name}}`
+- Title case: `{{title .Name}}`
+
+### Content Filtering by Target
+{{if ne .Target "cline"}}
+This content only appears for non-Cline targets (cursor, claude, copilot).
+{{end}}
+
+{{if contains .Target "c"}}
+Your target name contains the letter 'c'.
+{{end}}
+
+### Description Manipulation
+- Original: {{.Description}}
+- Uppercase: {{upper .Description}}
+- With replacement: {{replace .Description "comprehensive" "complete"}}
+
+### Dynamic Command Usage
+{{if eq .Target "claude"}}
+**Command Usage Examples:**
+- `/{{lower .Name}} analyze this function`
+- `/{{lower .Name}} suggest improvements`
+- `/{{lower .Name}} add error handling`
+
+Whatever you type after the command becomes: $ARGUMENTS
+{{end}}
+
+## Template Composition Best Practices
+
+### 1. Use Conditional Blocks for Target-Specific Content
+```go
+{ {if eq .Target "cursor"} }
+Cursor-specific content here
+{ {else if eq .Target "claude"} }
+Claude-specific content here
+{ {end} }
+```
+
+### 2. Leverage String Functions for Dynamic Content
+```go
+{ {title .Name} } # Capitalizes template name
+{ {lower .Target} } # Lowercase target name
+{ {replace .Description "old" "new"} } # Replace text in description
+```
+
+### 3. Use Claude's Native $ARGUMENTS
+```go
+{ {if eq .Target "claude"} }
+User input available as: $ARGUMENTS
+{ {else} }
+Static content for other platforms
+{ {end} }
+```
+
+### 4. Use Contains for Pattern Matching
+```go
+{ {if contains .Name "test"} }
+This is a test-related template
+{ {end} }
+```
+
+## YAML Front Matter Reference
+
+The following fields in YAML front matter are actually populated:
+
+```yaml
+---
+claude_mode: "memory|command|both"  # → .Mode variable
+description: "Your description"      # → .Description variable  
+globs: "**/*.js,**/*.ts"            # → .Globs variable
+---
+```
+
+**Note**: Other YAML fields are parsed but NOT available as template variables. For Claude commands, use `$ARGUMENTS` directly in your template content.
+
+## Variables That DON'T Work (Documented Issues)
+
+The following variables are defined in the code but never populated:
+- `.ProjectType` - Always empty
+- `.Language` - Always empty  
+- `.Framework` - Always empty
+- `.Tags` - Always empty
+- `.AlwaysApply` - Always empty
+- `.Documentation` - Always empty
+- `.StyleGuide` - Always empty
+- `.Examples` - Always empty
+- `.Custom` - Always empty map
+
+**Don't use these variables** - they will render as empty values.
+
+**Note**: `.Arguments` was removed from the template system. Use Claude's native `$ARGUMENTS` instead.
+
+## Usage Instructions
+
+### For Template Authors
+1. **Stick to working variables**: Use only .Target, .Name, .Description, .Globs, .Mode
+2. **Use $ARGUMENTS for Claude**: For interactive commands, use `$ARGUMENTS` directly
+3. **Test your templates**: Compile and check output in `compiled/` directory
+4. **Use conditionals**: Make content target-specific with `{ {if eq .Target "..."} }`
+5. **Leverage functions**: Use string manipulation functions for dynamic content
+
+### Command Usage (Target-Specific)
+{{if eq .Target "claude"}}
+- Invoke with: `/{{lower .Name}} [your-request]`
+- Your input becomes: $ARGUMENTS
+{{else if eq .Target "cursor"}}
+- This rule is automatically applied based on file patterns: {{.Globs}}
+{{else}}
+- Reference this guide during development
+{{end}}
+
+---
+
+*This template demonstrates only the template features that actually work in airuler. Use it as a reference for creating your own templates.*

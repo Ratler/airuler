@@ -1,0 +1,39 @@
+## Error Handling Best Practices
+
+### General Principles
+- **Fail Fast**: Detect and report errors as early as possible
+- **Graceful Degradation**: Provide fallback behavior when appropriate
+- **User-Friendly Messages**: Show helpful error messages to users
+- **Logging**: Log errors with sufficient context for debugging
+
+### Error Types
+- **Validation Errors**: Input validation and data integrity
+- **Runtime Errors**: Unexpected conditions during execution  
+- **Network Errors**: API calls, database connections, external services
+- **Resource Errors**: File system, memory, and other system resources
+
+### Implementation Guidelines
+- Use appropriate error handling mechanisms for your language
+- Avoid silent failures - always handle or propagate errors
+- Include relevant context in error messages
+- Consider error recovery strategies
+- Test error conditions and edge cases
+
+### {{title .Target}}-Specific Considerations
+{{if eq .Target "cursor"}}
+- Use TypeScript's union types for explicit error handling
+- Implement Result<T, E> patterns for recoverable errors
+- Add error boundary components for React applications
+{{else if eq .Target "claude"}}
+- Provide clear error context in prompts
+- Include error handling examples in documentation
+- Explain recovery strategies for common failure modes  
+{{else if eq .Target "cline"}}
+- Document error scenarios in comments
+- Use defensive programming techniques
+- Include error handling in code review checklists
+{{else if eq .Target "copilot"}}
+- Write error handling patterns that Copilot can learn from
+- Include comprehensive error checking in examples
+- Use consistent error handling across the codebase
+{{end}}

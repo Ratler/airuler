@@ -1,0 +1,42 @@
+---
+claude_mode: memory
+description: Architectural patterns and design principles for {{.Framework}} projects
+globs: "**/*"
+---
+
+# Architecture Patterns
+
+## Project Structure
+This project follows these architectural principles:
+
+### Layer Organization
+- **Presentation Layer**: UI components and user interaction
+- **Business Logic Layer**: Core application logic and rules
+- **Data Access Layer**: Database and external service interactions
+- **Infrastructure Layer**: Cross-cutting concerns (logging, config, etc.)
+
+### Design Patterns in Use
+- **Repository Pattern**: For data access abstraction
+- **Dependency Injection**: For loose coupling and testability
+- **Factory Pattern**: For object creation and configuration
+- **Observer Pattern**: For event handling and notifications
+
+### Code Organization Rules
+- Keep related functionality together in modules
+- Use clear naming conventions for files and folders
+- Separate concerns into distinct layers
+- Implement proper interfaces for abstraction
+
+### Performance Considerations
+- Optimize database queries and use appropriate indexes
+- Implement caching strategies for frequently accessed data
+- Use lazy loading for expensive operations
+- Monitor and profile application performance
+
+### Scalability Guidelines
+- Design for horizontal scaling
+- Use asynchronous processing where appropriate
+- Implement proper load balancing strategies
+- Consider microservices for complex domains
+
+When implementing new features, ensure they follow these established patterns and don't break the architectural boundaries.

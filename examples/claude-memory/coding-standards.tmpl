@@ -1,0 +1,39 @@
+---
+claude_mode: memory
+description: Project coding standards for {{.ProjectType}} development
+globs: "**/*"
+---
+
+# Project Coding Standards
+
+## Code Style Guidelines
+- Use consistent indentation (2 spaces for JS/TS, 4 spaces for Python)
+- Follow naming conventions appropriate for {{.Language}}
+- Write descriptive variable and function names
+- Keep functions small and focused (< 20 lines when possible)
+
+## Error Handling
+- Always handle errors explicitly
+- Use proper error types and messages
+- Log errors with sufficient context
+- Implement graceful degradation where appropriate
+
+## Testing Requirements
+- Write unit tests for all new functions
+- Aim for >80% code coverage
+- Include integration tests for critical paths
+- Use descriptive test names that explain behavior
+
+## Documentation Standards
+- Document all public APIs
+- Include usage examples in comments
+- Keep README files up to date
+- Document architectural decisions
+
+## Git Workflow
+- Use meaningful commit messages
+- Create feature branches for new work
+- Require code review before merging
+- Keep commit history clean and logical
+
+Remember: These standards apply to all code in this project. When suggesting changes, ensure they align with these guidelines.

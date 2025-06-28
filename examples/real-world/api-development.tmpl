@@ -1,0 +1,204 @@
+{{template "partials/header" .}}
+
+A comprehensive rule for API development covering RESTful design, authentication, validation, and documentation.
+
+{{if eq .Target "claude"}}
+## Usage
+Invoke with `/api-development $ARGUMENTS` where arguments can include:
+- `rest` - for RESTful API guidelines
+- `auth` - for authentication patterns
+- `validation` - for input validation
+- `docs` - for API documentation
+- `testing` - for API testing strategies
+{{end}}
+
+## API Design Principles
+
+### RESTful Design
+- Use appropriate HTTP methods (GET, POST, PUT, PATCH, DELETE)
+- Design resource-based URLs (`/users/123` not `/getUser?id=123`)
+- Return appropriate HTTP status codes
+- Use consistent naming conventions
+
+### URL Structure
+```
+GET    /api/v1/users           # List users
+POST   /api/v1/users           # Create user
+GET    /api/v1/users/123       # Get specific user
+PUT    /api/v1/users/123       # Update user (full)
+PATCH  /api/v1/users/123       # Update user (partial)
+DELETE /api/v1/users/123       # Delete user
+```
+
+### Response Format
+```json
+{
+  "success": true,
+  "data": {
+    "id": 123,
+    "name": "John Doe",
+    "email": "john@example.com"
+  },
+  "meta": {
+    "timestamp": "2024-01-01T00:00:00Z",
+    "version": "1.0"
+  }
+}
+```
+
+## Authentication & Authorization
+
+### Security Headers
+- Implement CORS properly
+- Use HTTPS in production
+- Set appropriate security headers
+- Implement rate limiting
+
+### Token Management
+{{if eq .Target "cursor"}}
+```typescript
+interface AuthToken {
+  access_token: string;
+  refresh_token: string;
+  expires_in: number;
+  token_type: 'Bearer';
+}
+
+interface AuthMiddleware {
+  validateToken(token: string): Promise<User | null>;
+  refreshToken(refreshToken: string): Promise<AuthToken>;
+}
+```
+{{else}}
+- Use JWT tokens for stateless authentication
+- Implement proper token expiration
+- Provide refresh token mechanism
+- Store tokens securely on client side
+{{end}}
+
+## Input Validation
+
+### Request Validation
+- Validate all input parameters
+- Sanitize user input to prevent injection attacks
+- Use schema validation (JSON Schema, Joi, etc.)
+- Provide clear validation error messages
+
+### Data Types
+{{if contains .Target "cursor,copilot"}}
+```typescript
+interface CreateUserRequest {
+  name: string;
+  email: string;
+  age?: number;
+  roles: UserRole[];
+}
+
+interface ValidationError {
+  field: string;
+  message: string;
+  code: string;
+}
+```
+{{else}}
+- Define clear data models for requests/responses
+- Use appropriate data types (string, number, boolean, etc.)
+- Implement proper null/undefined handling
+- Validate nested objects and arrays
+{{end}}
+
+{{template "partials/error-handling" .}}
+
+## API Error Handling
+
+### Error Response Format
+```json
+{
+  "success": false,
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Invalid input data",
+    "details": [
+      {
+        "field": "email",
+        "message": "Invalid email format"
+      }
+    ]
+  }
+}
+```
+
+### HTTP Status Codes
+- `200` - Success
+- `201` - Created
+- `400` - Bad Request (client error)
+- `401` - Unauthorized
+- `403` - Forbidden
+- `404` - Not Found
+- `422` - Unprocessable Entity (validation error)
+- `500` - Internal Server Error
+
+## Documentation
+
+### API Documentation
+{{if eq .Target "claude"}}
+- Use OpenAPI/Swagger for API specification
+- Include request/response examples
+- Document all error scenarios
+- Provide authentication instructions
+{{else}}
+- Document all endpoints with examples
+- Include authentication requirements
+- Describe rate limiting policies
+- Provide client SDK examples
+{{end}}
+
+### Code Documentation
+- Comment complex business logic
+- Document API middleware functions
+- Include usage examples in code
+- Maintain up-to-date README files
+
+## Testing Strategy
+
+### Unit Testing
+- Test individual API endpoints
+- Mock external dependencies
+- Test error conditions
+- Validate request/response schemas
+
+### Integration Testing
+- Test complete API workflows
+- Test authentication flows
+- Validate database interactions
+- Test external service integrations
+
+### Performance Testing
+- Load test critical endpoints
+- Monitor response times
+- Test concurrent user scenarios
+- Validate caching effectiveness
+
+{{if ne .Target "cline"}}
+## Advanced Topics
+
+### Caching Strategy
+- Implement appropriate cache headers
+- Use Redis for distributed caching
+- Cache frequently accessed data
+- Implement cache invalidation strategies
+
+### Monitoring & Logging
+- Log all API requests and responses
+- Monitor error rates and response times
+- Set up alerts for critical issues
+- Use structured logging formats
+
+### Versioning Strategy
+- Use URL versioning (`/api/v1/`)
+- Maintain backward compatibility
+- Document breaking changes
+- Provide migration guides
+{{end}}
+
+{{template "partials/footer" .}}

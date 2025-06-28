@@ -1,0 +1,46 @@
+# {{title .Name}} Rule
+
+{{if eq .Target "cursor"}}---
+description: {{if .Description}}{{.Description}}{{else}}Simple coding rule for {{.Name}}{{end}}
+globs: {{if .Globs}}{{.Globs}}{{else}}**/*{{end}}
+alwaysApply: true
+---
+{{end}}
+
+{{if eq .Target "copilot"}}---
+description: {{if .Description}}{{.Description}}{{else}}Simple coding rule for {{.Name}}{{end}}
+applyTo: {{if .Globs}}{{.Globs}}{{else}}**/*{{end}}
+---
+{{end}}
+
+This is a simple coding rule template that demonstrates basic airuler functionality.
+
+## Purpose
+This rule provides {{lower .Target}} with basic coding guidelines for {{.Name}}.
+
+## Instructions
+{{if eq .Target "claude"}}
+Arguments: $ARGUMENTS
+
+Use this rule when working on {{.Name}} related tasks.
+{{else}}
+Arguments: {{if .Arguments}}{{.Arguments}}{{else}}No specific arguments required{{end}}
+
+Apply this rule when working on {{.Name}} related tasks.
+{{end}}
+
+## Guidelines
+- Write clean, readable code
+- Follow consistent naming conventions  
+- Include appropriate comments
+- Handle errors gracefully
+
+{{if eq .Target "cursor"}}
+> This rule is automatically applied to all matching files in Cursor.
+{{else if eq .Target "claude"}}
+> Use `/{{lower .Name}}` to invoke this rule in Claude Code.
+{{else if eq .Target "cline"}}
+> This rule is available in your Cline rules directory.
+{{else if eq .Target "copilot"}}
+> This rule applies to files matching the specified patterns.
+{{end}}

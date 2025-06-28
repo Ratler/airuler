@@ -1,0 +1,39 @@
+---
+claude_mode: both
+description: Security guidelines for {{.ProjectType}} development
+globs: "**/*"
+---
+
+# Security Guidelines
+
+## Input Validation
+- Validate all user inputs at application boundaries
+- Use parameterized queries to prevent SQL injection
+- Sanitize data before displaying to prevent XSS
+- Implement proper authentication and authorization
+
+## Sensitive Data Handling
+- Never commit secrets, API keys, or passwords to version control
+- Use environment variables or secure configuration management
+- Encrypt sensitive data at rest and in transit
+- Implement secure session management
+
+## Dependencies and Libraries
+- Keep all dependencies up to date
+- Regularly audit for known vulnerabilities
+- Use dependency scanning tools
+- Follow principle of least privilege
+
+## API Security
+- Implement rate limiting
+- Use HTTPS for all communications
+- Validate and sanitize all API inputs
+- Implement proper error handling that doesn't leak information
+
+## Code Review Checklist
+- Check for hardcoded credentials
+- Verify input validation is present
+- Ensure proper error handling
+- Confirm secure communication protocols
+
+When writing or reviewing code, always consider the security implications and follow these guidelines.

@@ -1,0 +1,20 @@
+{{if eq .Target "cursor"}}---
+description: {{if .Description}}{{.Description}}{{else}}{{title .Name}} coding guidelines{{end}}
+globs: {{if .Globs}}{{.Globs}}{{else}}**/*{{end}}
+alwaysApply: {{if .AlwaysApply}}{{.AlwaysApply}}{{else}}true{{end}}
+{{if .Tags}}tags: {{join .Tags ", "}}{{end}}
+---
+{{end}}
+
+{{if eq .Target "copilot"}}---
+description: {{if .Description}}{{.Description}}{{else}}{{title .Name}} coding guidelines{{end}}
+applyTo: {{if .Globs}}{{.Globs}}{{else}}**/*{{end}}
+{{if .Tags}}tags: {{join .Tags ", "}}{{end}}
+---
+{{end}}
+
+# {{title .Name}} Guidelines
+
+{{if .ProjectType}}*Project Type: {{title .ProjectType}}*{{end}}
+{{if .Language}}*Language: {{title .Language}}*{{end}}
+{{if .Framework}}*Framework: {{title .Framework}}*{{end}}

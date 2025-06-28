@@ -1,0 +1,36 @@
+---
+claude_mode: command
+description: "Code refactoring assistant with flexible options"
+globs: "**/*"
+---
+
+# Refactoring Assistant
+
+{{if eq .Target "claude"}}
+## Command Usage
+Use `/refactor [task]` to get specific refactoring help.
+
+I'll analyze your code and provide guidance for: $ARGUMENTS
+
+### Example Usage:
+- `/refactor extract function from this code`
+- `/refactor improve variable names`
+- `/refactor optimize performance`
+- `/refactor add unit tests`
+
+test
+
+{{else}}
+## Refactoring Guidelines
+This rule provides guidance for common refactoring tasks:
+- Function extraction
+- Variable renaming  
+- Performance optimization
+- Test coverage improvement
+{{end}}
+
+## General Refactoring Principles
+1. Make small, incremental changes
+2. Ensure tests pass after each change
+3. Maintain code readability
+4. Document significant changes
