@@ -73,7 +73,6 @@ func init() {
 }
 
 func compileTemplates(targets []compiler.Target) error {
-
 	// Load templates
 	templateDirs := []string{"templates"}
 
@@ -165,10 +164,13 @@ func compileTemplates(targets []compiler.Target) error {
 			cleanTemplateContent := stripTemplateFrontMatter(templateSource.Content)
 
 			data := template.TemplateData{
-				Name:        templateName,
-				Description: getValueOrDefault(frontMatter.Description, fmt.Sprintf("AI coding rules for %s", templateName)),
-				Globs:       getValueOrDefault(frontMatter.Globs, "**/*"),
-				Mode:        frontMatter.ClaudeMode,
+				Name: templateName,
+				Description: getValueOrDefault(
+					frontMatter.Description,
+					fmt.Sprintf("AI coding rules for %s", templateName),
+				),
+				Globs: getValueOrDefault(frontMatter.Globs, "**/*"),
+				Mode:  frontMatter.ClaudeMode,
 			}
 
 			// Load the clean template content (without front matter)
@@ -227,8 +229,9 @@ func compileTemplates(targets []compiler.Target) error {
 }
 
 func loadTemplatesFromDirs(dirs []string) (map[string]TemplateSource, map[string]string, error) {
-	templates := make(map[string]TemplateSource) // Main templates to compile individually
-	partials := make(map[string]string)          // Partials to load for inclusion only
+	templates := make(map[string]TemplateSource)   // Main templates to compile individually
+	partials := make(map[string]string)            // Partials to load for inclusion only
+	conflicts := make(map[string][]TemplateSource) // Track conflicts for reporting
 
 	for _, dir := range dirs {
 		if _, err := os.Stat(dir); os.IsNotExist(err) {
@@ -287,11 +290,24 @@ func loadTemplatesFromDirs(dirs []string) (map[string]TemplateSource, map[string
 			if isPartial {
 				partials[name] = string(content)
 			} else {
-				// Check for conflicts
+				// Check for conflicts and prioritize local templates
 				if existing, exists := templates[name]; exists {
-					fmt.Printf("Warning: Template '%s' found in multiple sources:\n", name)
-					fmt.Printf("  - Using: %s (%s)\n", sourceType, path)
-					fmt.Printf("  - Ignoring: %s (%s)\n", existing.SourceType, existing.SourcePath)
+					// Track conflicts for later reporting
+					if _, hasConflict := conflicts[name]; !hasConflict {
+						conflicts[name] = []TemplateSource{existing}
+					}
+					conflicts[name] = append(conflicts[name], TemplateSource{
+						Content:    string(content),
+						SourceType: sourceType,
+						SourcePath: path,
+					})
+
+					// If existing is local and new is vendor, keep existing local
+					if existing.SourceType == "local" && sourceType != "local" {
+						return nil // Skip adding the vendor template
+					}
+					// If new template is local and existing is vendor, replace with local
+					// (or same precedence level - later one wins)
 				}
 
 				templates[name] = TemplateSource{
@@ -303,9 +319,43 @@ func loadTemplatesFromDirs(dirs []string) (map[string]TemplateSource, map[string
 
 			return nil
 		})
-
 		if err != nil {
 			return nil, nil, fmt.Errorf("failed to walk directory %s: %w", dir, err)
+		}
+	}
+
+	// Report conflicts in a consolidated manner
+	for templateName, conflictingSources := range conflicts {
+		if len(conflictingSources) > 1 {
+			// Find which template won (the one in templates map)
+			finalTemplate := templates[templateName]
+
+			// Separate into used and ignored
+			var used TemplateSource
+			var ignored []TemplateSource
+
+			for _, source := range conflictingSources {
+				if source.SourceType == finalTemplate.SourceType && source.SourcePath == finalTemplate.SourcePath {
+					used = source
+				} else {
+					ignored = append(ignored, source)
+				}
+			}
+
+			// Display conflict info
+			fmt.Printf("⚠️  Template '%s' found in multiple sources\n", templateName)
+
+			// Show what's being used
+			icon := "✅"
+			if used.SourceType == "local" {
+				icon = "🏠"
+			}
+			fmt.Printf("  %s Using: %s (%s)\n", icon, used.SourceType, used.SourcePath)
+
+			// Show what's being ignored
+			for _, ignoredSource := range ignored {
+				fmt.Printf("  ❌ Ignoring: %s (%s)\n", ignoredSource.SourceType, ignoredSource.SourcePath)
+			}
 		}
 	}
 
