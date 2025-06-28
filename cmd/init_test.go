@@ -26,9 +26,9 @@ func TestInitProject(t *testing.T) {
 	os.Setenv("AIRULER_TEST_MODE", "1")
 
 	// Test successful initialization
-	err = initProject()
+	err = initProject(".")
 	if err != nil {
-		t.Errorf("initProject() failed: %v", err)
+		t.Errorf("initProject failed: %v", err)
 	}
 
 	// Check that required files and directories were created
@@ -117,9 +117,9 @@ func TestInitProjectAlreadyExists(t *testing.T) {
 	}
 
 	// Test that initialization fails when config already exists
-	err = initProject()
+	err = initProject(".")
 	if err == nil {
-		t.Error("initProject() should fail when airuler.yaml already exists")
+		t.Error("initProject should fail when airuler.yaml already exists")
 	}
 
 	expectedError := "airuler.yaml already exists"
@@ -149,9 +149,9 @@ func TestInitProjectFilePermissions(t *testing.T) {
 	os.Setenv("AIRULER_TEST_MODE", "1")
 
 	// Test successful initialization
-	err = initProject()
+	err = initProject(".")
 	if err != nil {
-		t.Errorf("initProject() failed: %v", err)
+		t.Errorf("initProject failed: %v", err)
 	}
 
 	// Check file permissions
