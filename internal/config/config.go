@@ -32,6 +32,20 @@ type VendorLock struct {
 	FetchedAt time.Time `yaml:"fetched_at"`
 }
 
+type InstallationRecord struct {
+	Target      string    `yaml:"target"`
+	Rule        string    `yaml:"rule"`
+	Global      bool      `yaml:"global"`
+	ProjectPath string    `yaml:"project_path,omitempty"`
+	Mode        string    `yaml:"mode"`
+	InstalledAt time.Time `yaml:"installed_at"`
+	FilePath    string    `yaml:"file_path"`
+}
+
+type InstallationTracker struct {
+	Installations []InstallationRecord `yaml:"installations"`
+}
+
 func NewDefaultConfig() *Config {
 	return &Config{
 		Vendors: []Vendor{},

@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/ratler/airuler/internal/compiler"
+	"github.com/ratler/airuler/internal/config"
 	"github.com/spf13/cobra"
 )
 
@@ -144,6 +145,15 @@ func installForTarget(target compiler.Target) (int, error) {
 		if err := installFileWithMode(sourcePath, targetPath, target, mode); err != nil {
 			fmt.Printf("  ⚠️  Failed to install %s: %v\n", file.Name(), err)
 			continue
+		}
+
+		// Record the installation
+		ruleName := installRule
+		if ruleName == "" {
+			ruleName = "*" // Indicates all rules were installed
+		}
+		if err := recordInstallation(target, ruleName, targetPath, mode); err != nil {
+			fmt.Printf("  ⚠️  Failed to record installation: %v\n", err)
 		}
 
 		fmt.Printf("  ✅ %s -> %s\n", file.Name(), targetDir)
@@ -315,4 +325,47 @@ func installMemoryFile(source, target string) error {
 		// File doesn't exist - create new
 		return os.WriteFile(target, newContent, 0644)
 	}
+}
+
+func recordInstallation(target compiler.Target, rule, filePath, mode string) error {
+	record := config.InstallationRecord{
+		Target:      string(target),
+		Rule:        rule,
+		Global:      installProject == "",
+		ProjectPath: installProject,
+		Mode:        mode,
+		FilePath:    filePath,
+		InstalledAt: time.Now(),
+	}
+
+	var tracker *config.InstallationTracker
+	var err error
+
+	if installProject == "" {
+		// Global installation
+		tracker, err = config.LoadGlobalInstallationTracker()
+		if err != nil {
+			return fmt.Errorf("failed to load global installation tracker: %w", err)
+		}
+
+		tracker.AddInstallation(record)
+
+		if err := config.SaveGlobalInstallationTracker(tracker); err != nil {
+			return fmt.Errorf("failed to save global installation tracker: %w", err)
+		}
+	} else {
+		// Project installation
+		tracker, err = config.LoadProjectInstallationTracker()
+		if err != nil {
+			return fmt.Errorf("failed to load project installation tracker: %w", err)
+		}
+
+		tracker.AddInstallation(record)
+
+		if err := config.SaveProjectInstallationTracker(tracker); err != nil {
+			return fmt.Errorf("failed to save project installation tracker: %w", err)
+		}
+	}
+
+	return nil
 }
