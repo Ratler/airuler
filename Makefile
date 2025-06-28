@@ -65,13 +65,13 @@ install: build
 .PHONY: test
 test:
 	@echo "Running tests..."
-	$(GOTEST) -v ./...
+	AIRULER_USE_MOCK_GIT=1 $(GOTEST) -v ./...
 
 .PHONY: test-coverage
 test-coverage:
 	@echo "Running tests with coverage..."
 	@mkdir -p $(COVERAGE_DIR)
-	$(GOTEST) -v -race -coverprofile=$(COVERAGE_DIR)/coverage.out ./...
+	AIRULER_USE_MOCK_GIT=1 $(GOTEST) -v -race -coverprofile=$(COVERAGE_DIR)/coverage.out ./...
 	$(GO) tool cover -html=$(COVERAGE_DIR)/coverage.out -o $(COVERAGE_DIR)/coverage.html
 	@echo "Coverage report generated: $(COVERAGE_DIR)/coverage.html"
 
@@ -79,13 +79,13 @@ test-coverage:
 test-coverage-func:
 	@echo "Running tests with function coverage..."
 	@mkdir -p $(COVERAGE_DIR)
-	$(GOTEST) -v -race -coverprofile=$(COVERAGE_DIR)/coverage.out ./...
+	AIRULER_USE_MOCK_GIT=1 $(GOTEST) -v -race -coverprofile=$(COVERAGE_DIR)/coverage.out ./...
 	$(GO) tool cover -func=$(COVERAGE_DIR)/coverage.out
 
 .PHONY: benchmark
 benchmark:
 	@echo "Running benchmarks..."
-	$(GOTEST) -bench=. -benchmem ./...
+	AIRULER_USE_MOCK_GIT=1 $(GOTEST) -bench=. -benchmem ./...
 
 # Code quality targets
 .PHONY: lint

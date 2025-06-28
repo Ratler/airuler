@@ -12,14 +12,25 @@ import (
 )
 
 type Manager struct {
-	config   *config.Config
-	lockFile *config.LockFile
+	config     *config.Config
+	lockFile   *config.LockFile
+	gitFactory git.GitRepositoryFactory
 }
 
 func NewManager(cfg *config.Config) *Manager {
 	return &Manager{
-		config:   cfg,
-		lockFile: &config.LockFile{Vendors: make(map[string]config.VendorLock)},
+		config:     cfg,
+		lockFile:   &config.LockFile{Vendors: make(map[string]config.VendorLock)},
+		gitFactory: git.DefaultGitRepositoryFactory(),
+	}
+}
+
+// NewManagerWithGitFactory creates a new Manager with a custom git factory
+func NewManagerWithGitFactory(cfg *config.Config, gitFactory git.GitRepositoryFactory) *Manager {
+	return &Manager{
+		config:     cfg,
+		lockFile:   &config.LockFile{Vendors: make(map[string]config.VendorLock)},
+		gitFactory: gitFactory,
 	}
 }
 
@@ -52,7 +63,7 @@ func (m *Manager) Fetch(url, alias string, update bool) error {
 	}
 
 	vendorPath := filepath.Join("vendors", dirName)
-	repo := git.NewRepository(url, vendorPath)
+	repo := m.gitFactory.NewRepository(url, vendorPath)
 
 	// Check if vendor already exists
 	if repo.Exists() {
@@ -117,7 +128,7 @@ func (m *Manager) updateVendor(dirName string) error {
 	}
 
 	vendorPath := filepath.Join("vendors", dirName)
-	repo := git.NewRepository(lock.URL, vendorPath)
+	repo := m.gitFactory.NewRepository(lock.URL, vendorPath)
 
 	if !repo.Exists() {
 		return fmt.Errorf("vendor directory does not exist: %s (use 'airuler fetch' to clone missing vendors)", vendorPath)
@@ -177,7 +188,7 @@ func (m *Manager) Status() error {
 	fmt.Println("Vendor Status:")
 	for dirName, lock := range m.lockFile.Vendors {
 		vendorPath := filepath.Join("vendors", dirName)
-		repo := git.NewRepository(lock.URL, vendorPath)
+		repo := m.gitFactory.NewRepository(lock.URL, vendorPath)
 
 		if !repo.Exists() {
 			fmt.Printf("  %s: MISSING\n", dirName)
@@ -207,7 +218,7 @@ func (m *Manager) Remove(vendorName string) error {
 	}
 
 	vendorPath := filepath.Join("vendors", vendorName)
-	repo := git.NewRepository(lock.URL, vendorPath)
+	repo := m.gitFactory.NewRepository(lock.URL, vendorPath)
 
 	if err := repo.Remove(); err != nil {
 		return fmt.Errorf("failed to remove vendor directory: %w", err)
@@ -235,7 +246,7 @@ func (m *Manager) RestoreMissingVendors() error {
 	// Check which vendors are missing
 	for dirName := range m.lockFile.Vendors {
 		vendorPath := filepath.Join("vendors", dirName)
-		repo := git.NewRepository("", vendorPath) // URL not needed for Exists() check
+		repo := m.gitFactory.NewRepository("", vendorPath) // URL not needed for Exists() check
 		if !repo.Exists() {
 			missingVendors = append(missingVendors, dirName)
 		}
@@ -252,7 +263,7 @@ func (m *Manager) RestoreMissingVendors() error {
 	for _, dirName := range missingVendors {
 		lock := m.lockFile.Vendors[dirName]
 		vendorPath := filepath.Join("vendors", dirName)
-		repo := git.NewRepository(lock.URL, vendorPath)
+		repo := m.gitFactory.NewRepository(lock.URL, vendorPath)
 
 		fmt.Printf("Cloning %s...\n", dirName)
 		if err := repo.Clone(); err != nil {
