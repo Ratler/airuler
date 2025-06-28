@@ -61,7 +61,7 @@ func updateInstalledRules() error {
 		fmt.Printf("Warning: failed to load installation tracker: %v\n", err)
 	} else {
 		installations := tracker.GetInstallations(updateInstalledTarget, updateInstalledRule)
-		
+
 		// Filter by installation type if specified
 		if updateInstalledGlobal {
 			// Only include global installations
@@ -98,7 +98,7 @@ func updateInstalledRules() error {
 		if !installation.Global {
 			installType = fmt.Sprintf("project: %s", installation.ProjectPath)
 		}
-		
+
 		if err := updateSingleInstallation(installation); err != nil {
 			fmt.Printf("  ⚠️  Failed to update %s %s (%s) - %s: %v\n", installation.Target, installation.Rule, installation.Mode, installType, err)
 			failed++

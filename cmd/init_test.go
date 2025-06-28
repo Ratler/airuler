@@ -60,7 +60,6 @@ func TestInitProject(t *testing.T) {
 
 	configStr := string(configContent)
 	expectedConfigParts := []string{
-		"vendors:",
 		"defaults:",
 	}
 

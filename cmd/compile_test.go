@@ -109,10 +109,10 @@ func TestLoadTemplatesFromDirs(t *testing.T) {
 	}
 
 	for name, expectedContent := range expectedTemplates {
-		if content, exists := result[name]; !exists {
+		if templateSource, exists := result[name]; !exists {
 			t.Errorf("loadTemplatesFromDirs() missing template: %s", name)
-		} else if content != expectedContent {
-			t.Errorf("loadTemplatesFromDirs() template %s content = %q, expected %q", name, content, expectedContent)
+		} else if templateSource.Content != expectedContent {
+			t.Errorf("loadTemplatesFromDirs() template %s content = %q, expected %q", name, templateSource.Content, expectedContent)
 		}
 	}
 
@@ -197,10 +197,10 @@ func TestLoadTemplatesFromMultipleDirs(t *testing.T) {
 	}
 
 	for name, expectedContent := range expectedTemplates {
-		if content, exists := result[name]; !exists {
+		if templateSource, exists := result[name]; !exists {
 			t.Errorf("loadTemplatesFromDirs() missing template: %s", name)
-		} else if content != expectedContent {
-			t.Errorf("loadTemplatesFromDirs() template %s content = %q, expected %q", name, content, expectedContent)
+		} else if templateSource.Content != expectedContent {
+			t.Errorf("loadTemplatesFromDirs() template %s content = %q, expected %q", name, templateSource.Content, expectedContent)
 		}
 	}
 }

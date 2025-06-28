@@ -37,7 +37,6 @@ func TestInitGlobalConfig(t *testing.T) {
 
 	configStr := string(configContent)
 	expectedConfigParts := []string{
-		"vendors:",
 		"defaults:",
 	}
 
@@ -213,17 +212,10 @@ func TestCreateVendorManager(t *testing.T) {
 	}
 
 	// Create a test config file
-	testConfig := `vendors:
-  - url: https://github.com/test/repo
-    alias: test-vendor
-    enabled: true
-
-defaults:
+	testConfig := `defaults:
   include_vendors: [test-vendor]
-
-update:
-  auto_recompile: true
-  check_frequency: daily
+  modes:
+    claude: command
 `
 
 	if err := os.WriteFile("airuler.yaml", []byte(testConfig), 0644); err != nil {

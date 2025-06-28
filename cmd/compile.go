@@ -10,6 +10,7 @@ import (
 	"github.com/ratler/airuler/internal/config"
 	"github.com/ratler/airuler/internal/template"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 	yaml "gopkg.in/yaml.v3"
 )
 
@@ -24,6 +25,12 @@ type TemplateFrontMatter struct {
 	ClaudeMode  string `yaml:"claude_mode"`
 	Description string `yaml:"description"`
 	Globs       string `yaml:"globs"`
+}
+
+type TemplateSource struct {
+	Content    string
+	SourceType string // "local" or vendor name
+	SourcePath string // full file path
 }
 
 var compileCmd = &cobra.Command{
@@ -107,10 +114,10 @@ func compileTemplates(targets []compiler.Target) error {
 
 	// Filter templates by rule if specified
 	if ruleFlag != "" {
-		filtered := make(map[string]string)
-		for name, content := range templates {
+		filtered := make(map[string]TemplateSource)
+		for name, templateSource := range templates {
 			if strings.Contains(name, ruleFlag) {
-				filtered[name] = content
+				filtered[name] = templateSource
 			}
 		}
 		if len(filtered) == 0 {
@@ -147,15 +154,15 @@ func compileTemplates(targets []compiler.Target) error {
 		memoryModeContent := []string{}
 
 		// Now compile main templates (partials are available for inclusion)
-		for templateName, templateContent := range templates {
+		for templateName, templateSource := range templates {
 			// Parse front matter to get template metadata
-			frontMatter, err := parseTemplateFrontMatter(templateContent)
+			frontMatter, err := parseTemplateFrontMatter(templateSource.Content)
 			if err != nil {
 				fmt.Printf("Warning: failed to parse front matter for %s: %v\n", templateName, err)
 			}
 
 			// Strip front matter from template content before loading
-			cleanTemplateContent := stripTemplateFrontMatter(templateContent)
+			cleanTemplateContent := stripTemplateFrontMatter(templateSource.Content)
 
 			data := template.TemplateData{
 				Name:        templateName,
@@ -177,11 +184,14 @@ func compileTemplates(targets []compiler.Target) error {
 			}
 
 			for _, rule := range rules {
+				// Create display name with source information
+				displayName := fmt.Sprintf("%s/%s", templateSource.SourceType, templateName)
+
 				// Special handling for Claude memory mode
 				if target == compiler.TargetClaude && rule.Mode == "memory" {
 					memoryModeContent = append(memoryModeContent, rule.Content)
 					compiled++
-					fmt.Printf("  ✅ %s (memory) -> CLAUDE.md (queued)\n", templateName)
+					fmt.Printf("  ✅ %s (memory) -> CLAUDE.md (queued)\n", displayName)
 				} else {
 					// Regular file writing for non-memory mode
 					outputPath := targetComp.GetOutputPath(target, rule.Filename)
@@ -194,7 +204,7 @@ func compileTemplates(targets []compiler.Target) error {
 					if rule.Mode != "" && rule.Mode != "command" {
 						modeDesc = fmt.Sprintf(" (%s)", rule.Mode)
 					}
-					fmt.Printf("  ✅ %s%s -> %s\n", templateName, modeDesc, outputPath)
+					fmt.Printf("  ✅ %s%s -> %s\n", displayName, modeDesc, outputPath)
 				}
 			}
 		}
@@ -216,13 +226,26 @@ func compileTemplates(targets []compiler.Target) error {
 	return nil
 }
 
-func loadTemplatesFromDirs(dirs []string) (map[string]string, map[string]string, error) {
-	templates := make(map[string]string) // Main templates to compile individually
-	partials := make(map[string]string)  // Partials to load for inclusion only
+func loadTemplatesFromDirs(dirs []string) (map[string]TemplateSource, map[string]string, error) {
+	templates := make(map[string]TemplateSource) // Main templates to compile individually
+	partials := make(map[string]string)          // Partials to load for inclusion only
 
 	for _, dir := range dirs {
 		if _, err := os.Stat(dir); os.IsNotExist(err) {
 			continue
+		}
+
+		// Determine source type from directory
+		sourceType := "local"
+		if strings.Contains(dir, "vendors/") {
+			// Extract vendor name from path like "vendors/vendor-name/templates"
+			parts := strings.Split(dir, "/")
+			for i, part := range parts {
+				if part == "vendors" && i+1 < len(parts) {
+					sourceType = parts[i+1]
+					break
+				}
+			}
 		}
 
 		err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
@@ -264,7 +287,18 @@ func loadTemplatesFromDirs(dirs []string) (map[string]string, map[string]string,
 			if isPartial {
 				partials[name] = string(content)
 			} else {
-				templates[name] = string(content)
+				// Check for conflicts
+				if existing, exists := templates[name]; exists {
+					fmt.Printf("Warning: Template '%s' found in multiple sources:\n", name)
+					fmt.Printf("  - Using: %s (%s)\n", sourceType, path)
+					fmt.Printf("  - Ignoring: %s (%s)\n", existing.SourceType, existing.SourcePath)
+				}
+
+				templates[name] = TemplateSource{
+					Content:    string(content),
+					SourceType: sourceType,
+					SourcePath: path,
+				}
 			}
 
 			return nil
@@ -357,12 +391,55 @@ func getVendorTemplateDirs() []string {
 		}
 	}
 
-	// For now, include all vendors from the lock file
-	// TODO: In the future, this should respect the configuration's include_vendors setting
-	for vendorName := range lockFile.Vendors {
-		vendorDir := filepath.Join("vendors", vendorName, "templates")
-		if _, err := os.Stat(vendorDir); err == nil {
-			vendorDirs = append(vendorDirs, vendorDir)
+	// Load configuration to check include_vendors setting
+	cfg := config.NewDefaultConfig()
+	if viper.ConfigFileUsed() != "" {
+		if err := viper.Unmarshal(cfg); err != nil {
+			fmt.Printf("Warning: failed to load config: %v\n", err)
+		}
+	}
+
+	includeVendors := cfg.Defaults.IncludeVendors
+
+	// If no include_vendors config is set, include all vendors (backward compatibility)
+	if len(includeVendors) == 0 {
+		for vendorName := range lockFile.Vendors {
+			vendorDir := filepath.Join("vendors", vendorName, "templates")
+			if _, err := os.Stat(vendorDir); err == nil {
+				vendorDirs = append(vendorDirs, vendorDir)
+			}
+		}
+		return vendorDirs
+	}
+
+	// Check if "*" is in include_vendors (include all)
+	includeAll := false
+	for _, include := range includeVendors {
+		if include == "*" {
+			includeAll = true
+			break
+		}
+	}
+
+	if includeAll {
+		// Include all vendors
+		for vendorName := range lockFile.Vendors {
+			vendorDir := filepath.Join("vendors", vendorName, "templates")
+			if _, err := os.Stat(vendorDir); err == nil {
+				vendorDirs = append(vendorDirs, vendorDir)
+			}
+		}
+	} else {
+		// Include only specified vendors
+		for _, includeVendor := range includeVendors {
+			if _, exists := lockFile.Vendors[includeVendor]; exists {
+				vendorDir := filepath.Join("vendors", includeVendor, "templates")
+				if _, err := os.Stat(vendorDir); err == nil {
+					vendorDirs = append(vendorDirs, vendorDir)
+				}
+			} else {
+				fmt.Printf("Warning: configured vendor '%s' not found in lock file\n", includeVendor)
+			}
 		}
 	}
 
