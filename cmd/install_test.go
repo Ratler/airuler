@@ -70,7 +70,7 @@ func TestGetTargetInstallDir(t *testing.T) {
 		{compiler.TargetCursor, "/test/project/.cursor/rules"},
 		{compiler.TargetClaude, "/test/project/.claude/commands"},
 		{compiler.TargetCline, "/test/project/.clinerules"},
-		{compiler.TargetCopilot, "/test/project/.github/instructions"},
+		{compiler.TargetCopilot, "/test/project/.github"},
 	}
 
 	for _, tt := range tests {
@@ -96,7 +96,7 @@ func TestGetProjectInstallDir(t *testing.T) {
 		{compiler.TargetCursor, "/project", "/project/.cursor/rules"},
 		{compiler.TargetClaude, "/project", "/project/.claude/commands"},
 		{compiler.TargetCline, "/project", "/project/.clinerules"},
-		{compiler.TargetCopilot, "/project", "/project/.github/instructions"},
+		{compiler.TargetCopilot, "/project", "/project/.github"},
 	}
 
 	for _, tt := range tests {
@@ -145,6 +145,15 @@ func TestGetGlobalInstallDir(t *testing.T) {
 	for _, target := range tests {
 		t.Run(string(target), func(t *testing.T) {
 			result, err := getGlobalInstallDir(target)
+			
+			// Copilot should fail for global installation
+			if target == compiler.TargetCopilot {
+				if err == nil {
+					t.Errorf("getGlobalInstallDir() should fail for copilot, but got result: %q", result)
+				}
+				return
+			}
+			
 			if err != nil {
 				t.Errorf("getGlobalInstallDir() failed for %s: %v", target, err)
 			}
@@ -177,10 +186,6 @@ func TestGetGlobalInstallDir(t *testing.T) {
 			case compiler.TargetCline:
 				if !containsSubstring(result, ".clinerules") {
 					t.Errorf("Cline path should contain .clinerules, got %q", result)
-				}
-			case compiler.TargetCopilot:
-				if !containsSubstring(result, ".github/instructions") {
-					t.Errorf("Copilot path should contain .github/instructions, got %q", result)
 				}
 			}
 		})

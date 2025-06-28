@@ -129,13 +129,13 @@ This is a rule for {{.Target}}.
 			},
 			expectError: false,
 			checkContent: func(content string) bool {
-				return strings.Contains(content, "---") &&
-					strings.Contains(content, "description: Test rule") &&
-					strings.Contains(content, "applyTo: **/*.ts") &&
+				return !strings.Contains(content, "---") &&
+					!strings.Contains(content, "description:") &&
+					!strings.Contains(content, "applyTo:") &&
 					strings.Contains(content, "This is a rule for copilot")
 			},
 			checkFile: func(filename string) bool {
-				return filename == "test-rule.instructions.md"
+				return filename == "test-rule.copilot-instructions.md"
 			},
 		},
 	}
@@ -241,12 +241,26 @@ func TestProcessors(t *testing.T) {
 			content:      "Simple content",
 			templateName: "test",
 			data:         template.TemplateData{Description: "Test desc", Globs: "*.ts"},
-			expectedExt:  ".instructions.md",
+			expectedExt:  ".copilot-instructions.md",
 			checkContent: func(content string) bool {
-				return strings.Contains(content, "---") &&
-					strings.Contains(content, "description: Test desc") &&
-					strings.Contains(content, "applyTo: *.ts") &&
-					strings.Contains(content, "Simple content")
+				return !strings.Contains(content, "---") &&
+					!strings.Contains(content, "description:") &&
+					!strings.Contains(content, "applyTo:") &&
+					content == "Simple content"
+			},
+		},
+		{
+			name:         "copilot processor with front matter removal",
+			processor:    compiler.processCopilot,
+			content:      "---\ndescription: test\napplyTo: *.ts\n---\n\nSimple content",
+			templateName: "test",
+			data:         template.TemplateData{Description: "Test desc", Globs: "*.ts"},
+			expectedExt:  ".copilot-instructions.md",
+			checkContent: func(content string) bool {
+				return !strings.Contains(content, "---") &&
+					!strings.Contains(content, "description:") &&
+					!strings.Contains(content, "applyTo:") &&
+					content == "Simple content"
 			},
 		},
 	}
@@ -277,7 +291,7 @@ func TestGetOutputPath(t *testing.T) {
 		{TargetCursor, "test.mdc", "compiled/cursor/test.mdc"},
 		{TargetClaude, "test.md", "compiled/claude/test.md"},
 		{TargetCline, "test.md", "compiled/cline/test.md"},
-		{TargetCopilot, "test.instructions.md", "compiled/copilot/test.instructions.md"},
+		{TargetCopilot, "test.copilot-instructions.md", "compiled/copilot/test.copilot-instructions.md"},
 	}
 
 	for _, tt := range tests {

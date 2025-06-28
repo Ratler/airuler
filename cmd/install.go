@@ -102,6 +102,11 @@ func installForTarget(target compiler.Target) (int, error) {
 		return 0, fmt.Errorf("failed to read compiled directory: %w", err)
 	}
 
+	// Special handling for Copilot - merge all rules into single file
+	if target == compiler.TargetCopilot {
+		return installCopilotRules(compiledDir, files)
+	}
+
 	installed := 0
 	for _, file := range files {
 		if file.IsDir() {
@@ -163,6 +168,101 @@ func installForTarget(target compiler.Target) (int, error) {
 	return installed, nil
 }
 
+func installCopilotRules(compiledDir string, files []os.DirEntry) (int, error) {
+	// GitHub Copilot only supports project-level installation
+	if installProject == "" {
+		return 0, fmt.Errorf("copilot rules can only be installed to projects (use --project flag). Global copilot installation is not supported")
+	}
+
+	var ruleContents []string
+	var ruleNames []string
+
+	// Collect all copilot rule files
+	for _, file := range files {
+		if file.IsDir() {
+			continue
+		}
+
+		// Filter by rule if specified
+		if installRule != "" && !strings.Contains(file.Name(), installRule) {
+			continue
+		}
+
+		if strings.HasSuffix(file.Name(), ".copilot-instructions.md") {
+			sourcePath := filepath.Join(compiledDir, file.Name())
+			content, err := os.ReadFile(sourcePath)
+			if err != nil {
+				fmt.Printf("  ⚠️  Failed to read %s: %v\n", file.Name(), err)
+				continue
+			}
+
+			ruleContents = append(ruleContents, strings.TrimSpace(string(content)))
+			ruleNames = append(ruleNames, strings.TrimSuffix(file.Name(), ".copilot-instructions.md"))
+		}
+	}
+
+	if len(ruleContents) == 0 {
+		return 0, nil
+	}
+
+	// Get project directory
+	absPath, err := filepath.Abs(installProject)
+	if err != nil {
+		return 0, fmt.Errorf("failed to resolve project path: %w", err)
+	}
+
+	targetDir := filepath.Join(absPath, ".github")
+	targetPath := filepath.Join(targetDir, "copilot-instructions.md")
+
+	// Ensure .github directory exists
+	if err := os.MkdirAll(targetDir, 0755); err != nil {
+		return 0, fmt.Errorf("failed to create .github directory: %w", err)
+	}
+
+	// Combine all rules into single content
+	var combinedContent strings.Builder
+	combinedContent.WriteString("# AI Coding Instructions\n\n")
+	combinedContent.WriteString("This file contains custom instructions for GitHub Copilot.\n\n")
+
+	for i, content := range ruleContents {
+		if i > 0 {
+			combinedContent.WriteString("\n---\n\n")
+		}
+		if len(ruleNames) > 1 {
+			combinedContent.WriteString(fmt.Sprintf("## %s\n\n", ruleNames[i]))
+		}
+		combinedContent.WriteString(content)
+		combinedContent.WriteString("\n")
+	}
+
+	// Handle existing file
+	if _, err := os.Stat(targetPath); err == nil && !installForce {
+		// Create backup
+		backupPath := targetPath + ".backup." + time.Now().Format("20060102-150405")
+		if err := copyFile(targetPath, backupPath); err != nil {
+			return 0, fmt.Errorf("failed to create backup: %w", err)
+		}
+		fmt.Printf("    📋 Backed up existing file to %s\n", filepath.Base(backupPath))
+	}
+
+	// Write combined content
+	if err := os.WriteFile(targetPath, []byte(combinedContent.String()), 0644); err != nil {
+		return 0, fmt.Errorf("failed to write copilot instructions: %w", err)
+	}
+
+	// Record installation
+	ruleName := installRule
+	if ruleName == "" {
+		ruleName = "*"
+	}
+	if err := recordInstallation(compiler.TargetCopilot, ruleName, targetPath, ""); err != nil {
+		fmt.Printf("  ⚠️  Failed to record installation: %v\n", err)
+	}
+
+	fmt.Printf("  ✅ Combined %d rules -> %s\n", len(ruleContents), targetDir)
+	return 1, nil
+}
+
 func installFile(source, target string, targetType compiler.Target) error {
 	// Check if target exists and create backup
 	if _, err := os.Stat(target); err == nil && !installForce {
@@ -213,7 +313,7 @@ func getGlobalInstallDir(target compiler.Target) (string, error) {
 	case compiler.TargetCline:
 		return filepath.Join(homeDir, ".clinerules"), nil
 	case compiler.TargetCopilot:
-		return filepath.Join(homeDir, ".github", "instructions"), nil
+		return "", fmt.Errorf("copilot does not support global installation (use --project flag)")
 	default:
 		return "", fmt.Errorf("unsupported target: %s", target)
 	}
@@ -233,7 +333,7 @@ func getProjectInstallDir(target compiler.Target, projectPath string) (string, e
 	case compiler.TargetCline:
 		return filepath.Join(absPath, ".clinerules"), nil
 	case compiler.TargetCopilot:
-		return filepath.Join(absPath, ".github", "instructions"), nil
+		return filepath.Join(absPath, ".github"), nil
 	default:
 		return "", fmt.Errorf("unsupported target: %s", target)
 	}

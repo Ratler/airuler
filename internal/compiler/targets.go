@@ -156,18 +156,17 @@ func (c *Compiler) processCline(content, templateName string, data template.Temp
 }
 
 func (c *Compiler) processCopilot(content, templateName string, data template.TemplateData) (string, string) {
-	// GitHub Copilot expects .instructions.md files with optional YAML front matter
-	filename := filepath.Base(templateName) + ".instructions.md"
+	// GitHub Copilot uses single .github/copilot-instructions.md file with plain Markdown
+	// During compilation, we generate unique filenames and combine them during installation
+	filename := filepath.Base(templateName) + ".copilot-instructions.md"
 
-	// Ensure proper front matter format for Copilot
-	if !strings.HasPrefix(content, "---") {
-		frontMatter := fmt.Sprintf(`---
-description: %s
-applyTo: %s
----
-
-`, getDescription(data, templateName), getGlobs(data))
-		content = frontMatter + content
+	// Remove any YAML front matter for GitHub's plain Markdown format
+	if strings.HasPrefix(content, "---") {
+		// Find the end of front matter
+		parts := strings.SplitN(content, "---", 3)
+		if len(parts) >= 3 {
+			content = strings.TrimSpace(parts[2])
+		}
 	}
 
 	return content, filename
