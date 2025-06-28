@@ -15,21 +15,20 @@ var (
 )
 
 var fetchCmd = &cobra.Command{
-	Use:   "fetch <git-url>",
-	Short: "Fetch rules from a Git repository",
-	Long: `Fetch rules from a Git repository and add as a vendor.
+	Use:   "fetch [git-url]",
+	Short: "Fetch rules from a Git repository or restore missing vendors",
+	Long: `Fetch rules from a Git repository and add as a vendor, or restore missing vendors from lock file.
 
-The repository will be cloned to the vendors/ directory and can be used
-in compilation and installation commands.
+If a git-url is provided, the repository will be cloned to the vendors/ directory.
+If no arguments are provided, missing vendors from the lock file will be restored.
 
 Examples:
-  airuler fetch https://github.com/user/rules-repo
+  airuler fetch                                      # Restore missing vendors from lock file
+  airuler fetch https://github.com/user/rules-repo  # Fetch new vendor
   airuler fetch https://github.com/user/rules-repo --as my-rules
   airuler fetch https://github.com/user/rules-repo --update`,
-	Args: cobra.ExactArgs(1),
+	Args: cobra.MaximumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		url := args[0]
-
 		// Load config
 		cfg := config.NewDefaultConfig()
 		if viper.ConfigFileUsed() != "" {
@@ -44,7 +43,13 @@ Examples:
 			return fmt.Errorf("failed to load lock file: %w", err)
 		}
 
-		// Fetch vendor
+		if len(args) == 0 {
+			// Restore missing vendors from lock file
+			return manager.RestoreMissingVendors()
+		}
+
+		// Fetch new vendor
+		url := args[0]
 		return manager.Fetch(url, fetchAlias, fetchUpdate)
 	},
 }

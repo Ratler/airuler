@@ -120,7 +120,7 @@ func (m *Manager) updateVendor(dirName string) error {
 	repo := git.NewRepository(lock.URL, vendorPath)
 
 	if !repo.Exists() {
-		return fmt.Errorf("vendor directory does not exist: %s", vendorPath)
+		return fmt.Errorf("vendor directory does not exist: %s (use 'airuler fetch' to clone missing vendors)", vendorPath)
 	}
 
 	hasUpdates, err := repo.HasUpdates()
@@ -220,5 +220,67 @@ func (m *Manager) Remove(vendorName string) error {
 	}
 
 	fmt.Printf("Removed vendor: %s\n", vendorName)
+	return nil
+}
+
+func (m *Manager) RestoreMissingVendors() error {
+	if len(m.lockFile.Vendors) == 0 {
+		fmt.Println("No vendors found in lock file")
+		return nil
+	}
+
+	var missingVendors []string
+	var restoredCount int
+
+	// Check which vendors are missing
+	for dirName := range m.lockFile.Vendors {
+		vendorPath := filepath.Join("vendors", dirName)
+		repo := git.NewRepository("", vendorPath) // URL not needed for Exists() check
+		if !repo.Exists() {
+			missingVendors = append(missingVendors, dirName)
+		}
+	}
+
+	if len(missingVendors) == 0 {
+		fmt.Println("All vendors are present")
+		return nil
+	}
+
+	fmt.Printf("Found %d missing vendor(s), restoring...\n", len(missingVendors))
+
+	// Restore missing vendors
+	for _, dirName := range missingVendors {
+		lock := m.lockFile.Vendors[dirName]
+		vendorPath := filepath.Join("vendors", dirName)
+		repo := git.NewRepository(lock.URL, vendorPath)
+
+		fmt.Printf("Cloning %s...\n", dirName)
+		if err := repo.Clone(); err != nil {
+			fmt.Printf("Warning: failed to clone %s: %v\n", dirName, err)
+			continue
+		}
+
+		// Ensure we're on the main branch and at the correct commit
+		if err := repo.CheckoutMainBranch(); err != nil {
+			fmt.Printf("Warning: failed to checkout main branch for %s: %v\n", dirName, err)
+			continue
+		}
+
+		// Reset to the specific commit from lock file (this maintains branch state)
+		if err := repo.ResetToCommit(lock.Commit); err != nil {
+			fmt.Printf("Warning: failed to reset to commit %s for %s: %v\n", lock.Commit, dirName, err)
+			continue
+		}
+
+		fmt.Printf("✅ Restored %s at %s\n", dirName, lock.Commit[:8])
+		restoredCount++
+	}
+
+	if restoredCount == len(missingVendors) {
+		fmt.Printf("\n🎉 Successfully restored %d vendor(s)\n", restoredCount)
+	} else {
+		fmt.Printf("\n⚠️  Restored %d of %d vendor(s)\n", restoredCount, len(missingVendors))
+	}
+
 	return nil
 }

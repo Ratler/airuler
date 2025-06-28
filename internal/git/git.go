@@ -119,6 +119,54 @@ func (r *Repository) Remove() error {
 	return os.RemoveAll(r.LocalPath)
 }
 
+func (r *Repository) CheckoutCommit(commit string) error {
+	if !r.Exists() {
+		return fmt.Errorf("repository does not exist at %s", r.LocalPath)
+	}
+
+	cmd := exec.Command("git", "-C", r.LocalPath, "checkout", commit)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("failed to checkout commit %s: %w\nOutput: %s", commit, err, string(output))
+	}
+
+	return nil
+}
+
+func (r *Repository) CheckoutMainBranch() error {
+	if !r.Exists() {
+		return fmt.Errorf("repository does not exist at %s", r.LocalPath)
+	}
+
+	// Try to checkout main branch, fallback to master if main doesn't exist
+	cmd := exec.Command("git", "-C", r.LocalPath, "checkout", "main")
+	err := cmd.Run()
+	if err != nil {
+		// Fallback to master
+		cmd = exec.Command("git", "-C", r.LocalPath, "checkout", "master")
+		output, err := cmd.CombinedOutput()
+		if err != nil {
+			return fmt.Errorf("failed to checkout main/master branch: %w\nOutput: %s", err, string(output))
+		}
+	}
+
+	return nil
+}
+
+func (r *Repository) ResetToCommit(commit string) error {
+	if !r.Exists() {
+		return fmt.Errorf("repository does not exist at %s", r.LocalPath)
+	}
+
+	cmd := exec.Command("git", "-C", r.LocalPath, "reset", "--hard", commit)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("failed to reset to commit %s: %w\nOutput: %s", commit, err, string(output))
+	}
+
+	return nil
+}
+
 func URLToDirectoryName(url string) string {
 	// Convert git URL to directory name
 	// https://github.com/user/repo -> github.com-user-repo
