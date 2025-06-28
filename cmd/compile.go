@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/ratler/airuler/internal/compiler"
+	"github.com/ratler/airuler/internal/config"
 	"github.com/ratler/airuler/internal/template"
 	"github.com/spf13/cobra"
 	yaml "gopkg.in/yaml.v3"
@@ -69,7 +70,7 @@ func compileTemplates(targets []compiler.Target) error {
 	// Load templates
 	templateDirs := []string{"templates"}
 
-	// Add vendor directories if specified
+	// Add vendor directories based on flags or configuration
 	if vendorFlag != "" {
 		vendorDir := filepath.Join("vendors", vendorFlag, "templates")
 		if _, err := os.Stat(vendorDir); err == nil {
@@ -88,6 +89,10 @@ func compileTemplates(targets []compiler.Target) error {
 				fmt.Printf("Warning: vendor directory not found: %s\n", vendorDir)
 			}
 		}
+	} else {
+		// Auto-include vendors from configuration and lock file
+		vendorDirs := getVendorTemplateDirs()
+		templateDirs = append(templateDirs, vendorDirs...)
 	}
 
 	// Load templates and partials from all directories
@@ -338,4 +343,28 @@ func stripTemplateFrontMatter(content string) string {
 
 	// Return content without front matter, trimming leading whitespace
 	return strings.TrimSpace(parts[2])
+}
+
+func getVendorTemplateDirs() []string {
+	var vendorDirs []string
+
+	// Load lock file to see what vendors are available
+	lockFile := &config.LockFile{Vendors: make(map[string]config.VendorLock)}
+	if _, err := os.Stat("airuler.lock"); err == nil {
+		data, err := os.ReadFile("airuler.lock")
+		if err == nil {
+			yaml.Unmarshal(data, lockFile)
+		}
+	}
+
+	// For now, include all vendors from the lock file
+	// TODO: In the future, this should respect the configuration's include_vendors setting
+	for vendorName := range lockFile.Vendors {
+		vendorDir := filepath.Join("vendors", vendorName, "templates")
+		if _, err := os.Stat(vendorDir); err == nil {
+			vendorDirs = append(vendorDirs, vendorDir)
+		}
+	}
+
+	return vendorDirs
 }
