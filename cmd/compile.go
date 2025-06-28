@@ -442,14 +442,19 @@ func getVendorTemplateDirs() []string {
 	}
 
 	// Load configuration to check include_vendors setting
-	cfg := config.NewDefaultConfig()
-	if viper.ConfigFileUsed() != "" {
-		if err := viper.Unmarshal(cfg); err != nil {
-			fmt.Printf("Warning: failed to load config: %v\n", err)
-		}
-	}
+	includeVendors := viper.GetStringSlice("defaults.include_vendors")
 
-	includeVendors := cfg.Defaults.IncludeVendors
+	// Debug output for troubleshooting
+	if viper.GetBool("verbose") {
+		fmt.Printf("Debug: include_vendors config: %v\n", includeVendors)
+		fmt.Printf("Debug: available vendors in lock file: %v\n", func() []string {
+			var names []string
+			for name := range lockFile.Vendors {
+				names = append(names, name)
+			}
+			return names
+		}())
+	}
 
 	// If no include_vendors config is set, include all vendors (backward compatibility)
 	if len(includeVendors) == 0 {
