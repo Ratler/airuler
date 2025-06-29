@@ -105,6 +105,7 @@ func initProject(targetPath string) error {
 		"compiled/claude",
 		"compiled/cline",
 		"compiled/copilot",
+		"compiled/roo",
 	}
 
 	for _, dir := range dirs {

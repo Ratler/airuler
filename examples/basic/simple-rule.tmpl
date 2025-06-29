@@ -43,4 +43,6 @@ Apply this rule when working on {{.Name}} related tasks.
 > This rule is available in your Cline rules directory.
 {{else if eq .Target "copilot"}}
 > This rule applies to files matching the specified patterns.
+{{else if eq .Target "roo"}}
+> This rule is available in your Roo rules directory.
 {{end}}

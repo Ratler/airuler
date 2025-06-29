@@ -1,10 +1,10 @@
 # airuler - AI Rules Template Engine
 
-A Go-based CLI tool that compiles AI rule templates into target-specific formats for various AI coding assistants including Cursor, Claude Code, Cline, and GitHub Copilot.
+A Go-based CLI tool that compiles AI rule templates into target-specific formats for various AI coding assistants including Cursor, Claude Code, Cline, GitHub Copilot, and Roo Code.
 
 ## Features
 
-- 🎯 **Multi-target compilation**: Generate rules for Cursor, Claude Code, Cline, and GitHub Copilot
+- 🎯 **Multi-target compilation**: Generate rules for Cursor, Claude Code, Cline, GitHub Copilot, and Roo Code
 - 📦 **Vendor management**: Fetch and manage rule templates from Git repositories  
 - 🔄 **Template inheritance**: Support for base templates and partials
 - 💾 **Safe installation**: Automatic backup of existing rules
@@ -41,7 +41,8 @@ rules/
 │   ├── cursor/        # Cursor .mdc files
 │   ├── claude/        # Claude .md files (memory & commands)
 │   ├── cline/         # Cline .md files
-│   └── copilot/       # Copilot .instructions.md files
+│   ├── copilot/       # Copilot .instructions.md files
+│   └── roo/           # Roo Code .md files
 ├── airuler.yaml       # Configuration
 ├── airuler.lock      # Dependency lock file
 └── .gitignore         # Git ignore patterns
@@ -158,6 +159,11 @@ airuler install claude my-coding-rules
 - **Location**: `.github/instructions/` (project) or `~/.github/instructions/`
 - **Features**: Supports `description`, `applyTo` globs
 
+### Roo Code
+- **Format**: Plain `.md` files
+- **Location**: `.roo/rules/` (project) or `~/.roo/rules/` (global)
+- **Features**: Plain markdown rules, supports directory-based organization
+
 ## Template Syntax
 
 Templates use Go's `text/template` syntax with custom functions and YAML front matter.
@@ -180,7 +186,7 @@ tags: [frontend, web]
 ```
 
 ### Variables
-- `{{.Target}}` - Current target (cursor, claude, cline, copilot)
+- `{{.Target}}` - Current target (cursor, claude, cline, copilot, roo)
 - `{{.Name}}` - Template name
 - `{{.Description}}` - Rule description
 - `{{.Globs}}` - File glob patterns

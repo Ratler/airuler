@@ -22,7 +22,7 @@ func TestNewCompiler(t *testing.T) {
 }
 
 func TestTargetConstants(t *testing.T) {
-	expectedTargets := []Target{TargetCursor, TargetClaude, TargetCline, TargetCopilot}
+	expectedTargets := []Target{TargetCursor, TargetClaude, TargetCline, TargetCopilot, TargetRoo}
 
 	if len(AllTargets) != len(expectedTargets) {
 		t.Errorf("AllTargets length = %d, expected %d", len(AllTargets), len(expectedTargets))
@@ -139,6 +139,22 @@ This is a rule for {{.Target}}.
 			},
 			checkFile: func(filename string) bool {
 				return filename == "test-rule.copilot-instructions.md"
+			},
+		},
+		{
+			name:   "roo target",
+			target: TargetRoo,
+			data: template.Data{
+				Name:        "test-rule",
+				Description: "Test rule",
+			},
+			expectError: false,
+			checkContent: func(content string) bool {
+				return !strings.Contains(content, "---") &&
+					strings.Contains(content, "This is a rule for roo")
+			},
+			checkFile: func(filename string) bool {
+				return filename == "test-rule.md"
 			},
 		},
 	}
@@ -266,6 +282,17 @@ func TestProcessors(t *testing.T) {
 					content == "Simple content"
 			},
 		},
+		{
+			name:         "roo processor",
+			processor:    compiler.processRoo,
+			content:      "Content",
+			templateName: "test",
+			data:         template.Data{},
+			expectedExt:  ".md",
+			checkContent: func(content string) bool {
+				return content == "Content"
+			},
+		},
 	}
 
 	for _, tt := range tests {
@@ -295,6 +322,7 @@ func TestGetOutputPath(t *testing.T) {
 		{TargetClaude, "test.md", "compiled/claude/test.md"},
 		{TargetCline, "test.md", "compiled/cline/test.md"},
 		{TargetCopilot, "test.copilot-instructions.md", "compiled/copilot/test.copilot-instructions.md"},
+		{TargetRoo, "test.md", "compiled/roo/test.md"},
 	}
 
 	for _, tt := range tests {

@@ -1,0 +1,61 @@
+# {{title .Name}} Rule
+
+{{if eq .Target "roo"}}
+This rule provides Roo Code with comprehensive code review guidelines.
+
+## Purpose
+Help developers perform thorough code reviews and maintain high code quality standards.
+
+## Code Review Checklist
+
+### 1. Code Quality
+- [ ] Code follows established coding standards and conventions
+- [ ] Variable and function names are descriptive and meaningful
+- [ ] Code is DRY (Don't Repeat Yourself) - no unnecessary duplication
+- [ ] Complex logic is well-documented with comments
+- [ ] Functions are small and focused on a single responsibility
+
+### 2. Error Handling
+- [ ] All error cases are properly handled
+- [ ] Error messages are informative and actionable
+- [ ] Resources are properly cleaned up in error scenarios
+- [ ] No silent failures - errors are logged or reported
+
+### 3. Security
+- [ ] Input validation is performed on all user inputs
+- [ ] No hardcoded secrets or credentials
+- [ ] SQL queries use parameterized statements
+- [ ] Authentication and authorization checks are in place
+- [ ] Sensitive data is properly encrypted
+
+### 4. Performance
+- [ ] Database queries are optimized (proper indexes, no N+1 queries)
+- [ ] Algorithms have appropriate time complexity
+- [ ] Memory usage is reasonable
+- [ ] Caching is implemented where appropriate
+
+### 5. Testing
+- [ ] Unit tests cover critical functionality
+- [ ] Edge cases are tested
+- [ ] Test names clearly describe what they test
+- [ ] Tests are independent and can run in any order
+
+### 6. Documentation
+- [ ] API endpoints are documented
+- [ ] Complex algorithms have explanatory comments
+- [ ] README is updated if needed
+- [ ] Breaking changes are clearly noted
+
+## Review Process
+
+When reviewing code:
+1. First, understand the purpose of the changes
+2. Check if the implementation aligns with the stated purpose
+3. Look for potential bugs or edge cases
+4. Suggest improvements for readability and maintainability
+5. Ensure consistency with the existing codebase
+
+Remember: The goal is to improve code quality while being constructive and supportive.
+{{else}}
+This template is designed for Roo Code. Please compile with --target roo.
+{{end}}

@@ -18,9 +18,10 @@ const (
 	TargetClaude  Target = "claude"
 	TargetCline   Target = "cline"
 	TargetCopilot Target = "copilot"
+	TargetRoo     Target = "roo"
 )
 
-var AllTargets = []Target{TargetCursor, TargetClaude, TargetCline, TargetCopilot}
+var AllTargets = []Target{TargetCursor, TargetClaude, TargetCline, TargetCopilot, TargetRoo}
 
 type Compiler struct {
 	engine *template.Engine
@@ -103,6 +104,8 @@ func (c *Compiler) postProcess(content, templateName string, target Target, data
 		return c.processCline(content, templateName, data)
 	case TargetCopilot:
 		return c.processCopilot(content, templateName, data)
+	case TargetRoo:
+		return c.processRoo(content, templateName, data)
 	default:
 		return content, templateName + ".txt"
 	}
@@ -171,6 +174,13 @@ func (c *Compiler) processCopilot(content, templateName string, _ template.Data)
 			content = strings.TrimSpace(parts[2])
 		}
 	}
+
+	return content, filename
+}
+
+func (c *Compiler) processRoo(content, templateName string, _ template.Data) (string, string) {
+	// Roo uses plain .md files in .roo/rules/ directory
+	filename := filepath.Base(templateName) + ".md"
 
 	return content, filename
 }

@@ -1,0 +1,67 @@
+# {{title .Name}} Rule
+
+{{if eq .Target "roo"}}
+This rule helps Roo Code assist with code refactoring tasks.
+
+## Refactoring Guidelines
+
+### Before Starting
+1. Ensure all tests pass before refactoring
+2. Understand the current functionality completely
+3. Identify the specific code smells or issues to address
+
+### Common Refactoring Patterns
+
+#### Extract Method
+When you see duplicate code or a long method:
+- Identify the code that can be grouped together
+- Extract it into a well-named method
+- Replace all occurrences with the new method call
+
+#### Rename Variables/Methods
+For unclear names:
+- Choose descriptive names that reveal intent
+- Use consistent naming conventions
+- Update all references throughout the codebase
+
+#### Simplify Conditionals
+For complex if/else chains:
+- Consider using early returns
+- Extract complex conditions into well-named boolean methods
+- Use polymorphism for type-based conditionals
+
+#### Remove Dead Code
+- Delete commented-out code
+- Remove unused variables and methods
+- Clean up unreachable code paths
+
+### Refactoring Process
+
+1. **Identify**: Find code that needs improvement
+2. **Plan**: Decide on the refactoring approach
+3. **Test**: Ensure tests cover the code to be refactored
+4. **Refactor**: Make small, incremental changes
+5. **Verify**: Run tests after each change
+6. **Commit**: Make frequent commits with clear messages
+
+### Best Practices
+
+- Make one type of change at a time
+- Keep refactoring separate from feature changes
+- Maintain backward compatibility when possible
+- Document any breaking changes
+- Use automated refactoring tools when available
+
+### Red Flags to Watch For
+
+- Methods longer than 20-30 lines
+- Deeply nested conditionals (>3 levels)
+- Duplicate code blocks
+- Large parameter lists (>3-4 parameters)
+- Comments explaining what code does (code should be self-explanatory)
+- Magic numbers and strings
+
+Remember: The goal of refactoring is to make code easier to understand and modify without changing its behavior.
+{{else}}
+This template is designed for Roo Code. Please compile with --target roo.
+{{end}}

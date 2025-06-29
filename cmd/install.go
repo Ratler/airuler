@@ -296,6 +296,14 @@ func getTargetInstallDir(target compiler.Target) (string, error) {
 	return getGlobalInstallDir(target)
 }
 
+func getRooGlobalPath() string {
+	homeDir, _ := os.UserHomeDir()
+	if runtime.GOOS == "windows" {
+		return filepath.Join(homeDir, ".roo", "rules")
+	}
+	return filepath.Join(homeDir, ".roo", "rules")
+}
+
 func getGlobalInstallDir(target compiler.Target) (string, error) {
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
@@ -318,6 +326,8 @@ func getGlobalInstallDir(target compiler.Target) (string, error) {
 		return filepath.Join(homeDir, ".clinerules"), nil
 	case compiler.TargetCopilot:
 		return "", fmt.Errorf("copilot does not support global installation (use --project flag)")
+	case compiler.TargetRoo:
+		return getRooGlobalPath(), nil
 	default:
 		return "", fmt.Errorf("unsupported target: %s", target)
 	}
@@ -338,6 +348,8 @@ func getProjectInstallDir(target compiler.Target, projectPath string) (string, e
 		return filepath.Join(absPath, ".clinerules"), nil
 	case compiler.TargetCopilot:
 		return filepath.Join(absPath, ".github"), nil
+	case compiler.TargetRoo:
+		return filepath.Join(absPath, ".roo", "rules"), nil
 	default:
 		return "", fmt.Errorf("unsupported target: %s", target)
 	}

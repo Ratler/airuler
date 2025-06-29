@@ -37,7 +37,7 @@ func TestIsValidTarget(t *testing.T) {
 func TestGetTargetNames(t *testing.T) {
 	names := getTargetNames()
 
-	expectedNames := []string{"cursor", "claude", "cline", "copilot"}
+	expectedNames := []string{"cursor", "claude", "cline", "copilot", "roo"}
 
 	if len(names) != len(expectedNames) {
 		t.Errorf("getTargetNames() returned %d names, expected %d", len(names), len(expectedNames))
