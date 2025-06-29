@@ -6,7 +6,7 @@ A Go-based CLI tool that compiles AI rule templates into target-specific formats
 
 - 🎯 **Multi-target compilation**: Generate rules for Cursor, Claude Code, Cline, GitHub Copilot, and Roo Code
 - 📦 **Vendor management**: Fetch and manage rule templates from Git repositories  
-- 🔄 **Template inheritance**: Support for base templates and partials
+- 🔄 **Template inheritance**: Support for template partials
 - 💾 **Safe installation**: Automatic backup of existing rules
 - 🔍 **Watch mode**: Auto-compile templates during development
 - ⚙️ **Flexible configuration**: YAML-based configuration with lock files
