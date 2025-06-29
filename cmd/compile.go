@@ -39,15 +39,15 @@ type TemplateSource struct {
 var compileCmd = &cobra.Command{
 	Use:   "compile [target]",
 	Short: "Compile templates into target-specific rules",
-	Long: `Compile templates into target-specific rules for AI coding assistants.
+	Long: fmt.Sprintf(`Compile templates into target-specific rules for AI coding assistants.
 
-Available targets: cursor, claude, cline, copilot
+Available targets: %s
 
 Examples:
   airuler compile                    # Compile for all targets
   airuler compile cursor             # Compile only for Cursor
   airuler compile --vendor frontend  # Compile from specific vendor
-  airuler compile --rule my-rule     # Compile specific rule`,
+  airuler compile --rule my-rule     # Compile specific rule`, strings.Join(getTargetNames(), ", ")),
 	Args: cobra.MaximumNArgs(1),
 	RunE: func(_ *cobra.Command, args []string) error {
 		var targets []compiler.Target

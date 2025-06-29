@@ -33,7 +33,8 @@ Project Structure:
 │   ├── cursor/       # Cursor IDE rules
 │   ├── claude/       # Claude Code rules
 │   ├── cline/        # Cline rules
-│   └── copilot/      # GitHub Copilot rules
+│   ├── copilot/      # GitHub Copilot rules
+│   └── roo/          # Roo Code rules
 ├── airuler.yaml       # Project configuration
 ├── airuler.lock       # Vendor dependency locks
 └── README.md          # Project documentation
