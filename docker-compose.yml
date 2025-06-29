@@ -5,7 +5,7 @@ version: '3.8'
 
 services:
   airuler:
-    build: .
+    image: ratler/airuler:latest
     volumes:
       - .:/workspace
     working_dir: /workspace
@@ -13,7 +13,7 @@ services:
 
   # Service for compiling templates
   compile:
-    build: .
+    image: ratler/airuler:latest
     volumes:
       - .:/workspace
     working_dir: /workspace
@@ -21,7 +21,7 @@ services:
 
   # Service for watching templates during development
   watch:
-    build: .
+    image: ratler/airuler:latest
     volumes:
       - .:/workspace
     working_dir: /workspace
