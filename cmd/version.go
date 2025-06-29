@@ -26,7 +26,7 @@ var versionCmd = &cobra.Command{
 	Use:   "version",
 	Short: "Show version information",
 	Long:  "Display airuler version, build commit, and build date information.",
-	Run: func(cmd *cobra.Command, args []string) {
+	Run: func(_ *cobra.Command, _ []string) {
 		fmt.Printf("airuler version %s\n", version)
 		fmt.Printf("Build commit: %s\n", buildCommit)
 		fmt.Printf("Build date: %s\n", buildDate)
