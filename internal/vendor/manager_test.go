@@ -339,12 +339,12 @@ func TestManager_RestoreMissingVendors(t *testing.T) {
 		mockFactory := git.NewMockGitRepositoryFactory()
 		mockManager := NewManagerWithGitFactory(cfg, mockFactory)
 		mockManager.lockFile = &config.LockFile{Vendors: make(map[string]config.VendorLock)}
-		
+
 		// Configure mock to fail clone (simulating non-existent repo)
 		mockFactory.ConfigureRepository("https://github.com/user/missing-repo", "vendors/missing-vendor", func(repo *git.MockRepository) {
 			repo.ShouldFailClone = true
 		})
-		
+
 		// Add vendor to lock file but don't create directory
 		mockManager.lockFile.Vendors["missing-vendor"] = config.VendorLock{
 			URL:    "https://github.com/user/missing-repo",

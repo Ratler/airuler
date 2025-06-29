@@ -94,7 +94,7 @@ lint:
 	@if command -v $(GOLINT) > /dev/null; then \
 		$(GOLINT) run; \
 	else \
-		echo "golangci-lint not found. Install with: curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b \$$(go env GOPATH)/bin v1.55.2"; \
+		echo "golangci-lint not found. Install with: curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b \$$(go env GOPATH)/bin v2.1.1"; \
 		exit 1; \
 	fi
 

@@ -10,7 +10,7 @@ import (
 	"github.com/go-git/go-git/v6/plumbing"
 )
 
-// GoGitRepository implements GitRepository interface using go-git library
+// GoGitRepository implements Repository interface using go-git library
 type GoGitRepository struct {
 	URL       string
 	LocalPath string
@@ -25,7 +25,7 @@ func NewGoGitRepositoryFactory() *GoGitRepositoryFactory {
 }
 
 // NewRepository creates a new repository instance using go-git
-func (f *GoGitRepositoryFactory) NewRepository(url, localPath string) GitRepository {
+func (f *GoGitRepositoryFactory) NewRepository(url, localPath string) Repository {
 	return &GoGitRepository{
 		URL:       url,
 		LocalPath: localPath,
@@ -284,6 +284,6 @@ func URLToDirectoryName(url string) string {
 	return url
 }
 
-// Ensure GoGitRepository implements GitRepository interface
-var _ GitRepository = (*GoGitRepository)(nil)
-var _ GitRepositoryFactory = (*GoGitRepositoryFactory)(nil)
+// Ensure GoGitRepository implements Repository interface
+var _ Repository = (*GoGitRepository)(nil)
+var _ RepositoryFactory = (*GoGitRepositoryFactory)(nil)

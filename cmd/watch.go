@@ -16,7 +16,7 @@ var watchCmd = &cobra.Command{
 	Long: `Watch template files for changes and automatically recompile when they change.
 
 This is useful during development to get immediate feedback when editing templates.`,
-	RunE: func(cmd *cobra.Command, args []string) error {
+	RunE: func(_ *cobra.Command, _ []string) error {
 		fmt.Println("🔍 Watching templates for changes... (Press Ctrl+C to stop)")
 		fmt.Println("Note: This is a basic implementation. For production use, consider using external tools like 'watchexec'.")
 
@@ -61,7 +61,7 @@ func getLastModTime() (time.Time, error) {
 	// Check templates directory
 	err := filepath.Walk("templates", func(path string, info os.FileInfo, err error) error {
 		if err != nil {
-			return nil // Skip errors
+			return err // Propagate errors instead of skipping
 		}
 
 		if !info.IsDir() && filepath.Ext(path) == ".tmpl" {

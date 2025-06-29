@@ -40,7 +40,7 @@ Examples:
   airuler init my-rules-project   # Create and initialize new directory
   airuler init ../other-project   # Initialize in relative path`,
 	Args: cobra.MaximumNArgs(1),
-	RunE: func(cmd *cobra.Command, args []string) error {
+	RunE: func(_ *cobra.Command, args []string) error {
 		var targetPath string
 		if len(args) > 0 {
 			targetPath = args[0]
@@ -80,7 +80,10 @@ func initProject(targetPath string) error {
 		// Set up cleanup in case of error
 		defer func() {
 			if originalDir != "" {
-				os.Chdir(originalDir)
+				if err := os.Chdir(originalDir); err != nil {
+					// Log warning but don't fail the overall operation
+					fmt.Printf("Warning: failed to restore original directory %s: %v\n", originalDir, err)
+				}
 			}
 		}()
 	}
@@ -114,7 +117,7 @@ func initProject(targetPath string) error {
 		return fmt.Errorf("failed to marshal config: %w", err)
 	}
 
-	if err := os.WriteFile("airuler.yaml", cfgData, 0644); err != nil {
+	if err := os.WriteFile("airuler.yaml", cfgData, 0600); err != nil {
 		return fmt.Errorf("failed to write config file: %w", err)
 	}
 
@@ -127,7 +130,7 @@ func initProject(targetPath string) error {
 		return fmt.Errorf("failed to marshal lock file: %w", err)
 	}
 
-	if err := os.WriteFile("airuler.lock", lockData, 0644); err != nil {
+	if err := os.WriteFile("airuler.lock", lockData, 0600); err != nil {
 		return fmt.Errorf("failed to write lock file: %w", err)
 	}
 
@@ -152,7 +155,7 @@ Thumbs.db
 *.swo
 *~
 `
-	if err := os.WriteFile(".gitignore", []byte(gitignoreContent), 0644); err != nil {
+	if err := os.WriteFile(".gitignore", []byte(gitignoreContent), 0600); err != nil {
 		return fmt.Errorf("failed to write .gitignore file: %w", err)
 	}
 
@@ -260,7 +263,7 @@ defaults:
 
 For more detailed documentation, visit the [airuler repository](https://github.com/Ratler/airuler/).
 `
-	if err := os.WriteFile("README.md", []byte(readmeContent), 0644); err != nil {
+	if err := os.WriteFile("README.md", []byte(readmeContent), 0600); err != nil {
 		return fmt.Errorf("failed to write README.md file: %w", err)
 	}
 
@@ -285,7 +288,7 @@ This is an example rule template for {{.Target}}.
 - Include proper error handling`
 
 	examplePath := filepath.Join("templates", "examples", "example.tmpl")
-	if err := os.WriteFile(examplePath, []byte(exampleTemplate), 0644); err != nil {
+	if err := os.WriteFile(examplePath, []byte(exampleTemplate), 0600); err != nil {
 		return fmt.Errorf("failed to write example template: %w", err)
 	}
 
@@ -329,7 +332,10 @@ This is an example rule template for {{.Target}}.
 
 	// Restore original directory if we changed it
 	if originalDir != "" {
-		os.Chdir(originalDir)
+		if err := os.Chdir(originalDir); err != nil {
+			// Log warning but don't fail the overall operation
+			fmt.Printf("Warning: failed to restore original directory %s: %v\n", originalDir, err)
+		}
 	}
 
 	return nil

@@ -23,7 +23,7 @@ var vendorsListCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List all vendors",
 	Long:  `List all vendor repositories with their details.`,
-	RunE: func(cmd *cobra.Command, args []string) error {
+	RunE: func(_ *cobra.Command, _ []string) error {
 		manager, err := createVendorManager()
 		if err != nil {
 			return err
@@ -36,7 +36,7 @@ var vendorsStatusCmd = &cobra.Command{
 	Use:   "status",
 	Short: "Show status of all vendors",
 	Long:  `Show the update status of all vendor repositories.`,
-	RunE: func(cmd *cobra.Command, args []string) error {
+	RunE: func(_ *cobra.Command, _ []string) error {
 		manager, err := createVendorManager()
 		if err != nil {
 			return err
@@ -49,7 +49,7 @@ var vendorsCheckCmd = &cobra.Command{
 	Use:   "check",
 	Short: "Check for updates without fetching",
 	Long:  `Check for updates in vendor repositories without fetching them.`,
-	RunE: func(cmd *cobra.Command, args []string) error {
+	RunE: func(_ *cobra.Command, _ []string) error {
 		manager, err := createVendorManager()
 		if err != nil {
 			return err
@@ -63,7 +63,7 @@ var vendorsRemoveCmd = &cobra.Command{
 	Short: "Remove a vendor",
 	Long:  `Remove a vendor repository from the vendors directory.`,
 	Args:  cobra.ExactArgs(1),
-	RunE: func(cmd *cobra.Command, args []string) error {
+	RunE: func(_ *cobra.Command, args []string) error {
 		manager, err := createVendorManager()
 		if err != nil {
 			return err
@@ -77,7 +77,7 @@ var vendorsIncludeCmd = &cobra.Command{
 	Short: "Include a vendor in compilation",
 	Long:  `Add a vendor to the include_vendors list in configuration.`,
 	Args:  cobra.ExactArgs(1),
-	RunE: func(cmd *cobra.Command, args []string) error {
+	RunE: func(_ *cobra.Command, args []string) error {
 		return modifyIncludeVendors(args[0], true)
 	},
 }
@@ -87,7 +87,7 @@ var vendorsExcludeCmd = &cobra.Command{
 	Short: "Exclude a vendor from compilation",
 	Long:  `Remove a vendor from the include_vendors list in configuration.`,
 	Args:  cobra.ExactArgs(1),
-	RunE: func(cmd *cobra.Command, args []string) error {
+	RunE: func(_ *cobra.Command, args []string) error {
 		return modifyIncludeVendors(args[0], false)
 	},
 }
@@ -96,7 +96,7 @@ var vendorsIncludeAllCmd = &cobra.Command{
 	Use:   "include-all",
 	Short: "Include all vendors in compilation",
 	Long:  `Set include_vendors to ["*"] to include all vendors.`,
-	RunE: func(cmd *cobra.Command, args []string) error {
+	RunE: func(_ *cobra.Command, _ []string) error {
 		return setIncludeVendorsAll(true)
 	},
 }
@@ -105,7 +105,7 @@ var vendorsExcludeAllCmd = &cobra.Command{
 	Use:   "exclude-all",
 	Short: "Exclude all vendors from compilation",
 	Long:  `Set include_vendors to [] to exclude all vendors (local templates only).`,
-	RunE: func(cmd *cobra.Command, args []string) error {
+	RunE: func(_ *cobra.Command, _ []string) error {
 		return setIncludeVendorsAll(false)
 	},
 }
@@ -162,7 +162,7 @@ func saveProjectConfig(cfg *config.Config) error {
 		return fmt.Errorf("failed to marshal config: %w", err)
 	}
 
-	return os.WriteFile(configPath, data, 0644)
+	return os.WriteFile(configPath, data, 0600)
 }
 
 func modifyIncludeVendors(vendorName string, include bool) error {

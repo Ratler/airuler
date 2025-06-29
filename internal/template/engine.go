@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"strings"
 	"text/template"
+	"unicode"
 )
 
 type Engine struct {
@@ -12,7 +13,7 @@ type Engine struct {
 	funcMap   template.FuncMap
 }
 
-type TemplateData struct {
+type Data struct {
 	Target      string
 	Name        string
 	Description string
@@ -35,11 +36,25 @@ type TemplateData struct {
 	Custom map[string]interface{}
 }
 
+// toTitle replaces the deprecated strings.Title function
+// It capitalizes the first letter of each word in the string
+func toTitle(s string) string {
+	prev := ' '
+	return strings.Map(func(r rune) rune {
+		if unicode.IsLetter(r) && !unicode.IsLetter(prev) {
+			prev = r
+			return unicode.ToTitle(r)
+		}
+		prev = r
+		return r
+	}, s)
+}
+
 func NewEngine() *Engine {
 	funcMap := template.FuncMap{
 		"lower":    strings.ToLower,
 		"upper":    strings.ToUpper,
-		"title":    strings.Title,
+		"title":    toTitle,
 		"join":     strings.Join,
 		"contains": strings.Contains,
 		"replace":  strings.ReplaceAll,
@@ -59,7 +74,9 @@ func (e *Engine) LoadTemplate(name, content string) error {
 	for templateName, existingTmpl := range e.templates {
 		if templateName != name && existingTmpl.Root != nil {
 			// Add existing template as an associated template
-			tmpl.New(templateName).Parse(existingTmpl.Root.String())
+			if _, err := tmpl.New(templateName).Parse(existingTmpl.Root.String()); err != nil {
+				return fmt.Errorf("failed to parse associated template %s: %w", templateName, err)
+			}
 		}
 	}
 
@@ -94,7 +111,10 @@ func (e *Engine) updateTemplateReferences() {
 		// Add all other templates as associated templates
 		for otherName, otherContent := range templateContents {
 			if otherName != name {
-				tmpl.New(otherName).Parse(otherContent)
+				if _, err := tmpl.New(otherName).Parse(otherContent); err != nil {
+					// Skip this template if it fails to parse, but continue with others
+					continue
+				}
 			}
 		}
 
@@ -119,7 +139,7 @@ func (e *Engine) LoadTemplateFile(path string) error {
 	return e.LoadTemplate(name, content)
 }
 
-func (e *Engine) Render(templateName string, data TemplateData) (string, error) {
+func (e *Engine) Render(templateName string, data Data) (string, error) {
 	tmpl, exists := e.templates[templateName]
 	if !exists {
 		return "", fmt.Errorf("template %s not found", templateName)

@@ -14,7 +14,7 @@ import (
 type Manager struct {
 	config     *config.Config
 	lockFile   *config.LockFile
-	gitFactory git.GitRepositoryFactory
+	gitFactory git.RepositoryFactory
 }
 
 func NewManager(cfg *config.Config) *Manager {
@@ -26,7 +26,7 @@ func NewManager(cfg *config.Config) *Manager {
 }
 
 // NewManagerWithGitFactory creates a new Manager with a custom git factory
-func NewManagerWithGitFactory(cfg *config.Config, gitFactory git.GitRepositoryFactory) *Manager {
+func NewManagerWithGitFactory(cfg *config.Config, gitFactory git.RepositoryFactory) *Manager {
 	return &Manager{
 		config:     cfg,
 		lockFile:   &config.LockFile{Vendors: make(map[string]config.VendorLock)},
@@ -53,7 +53,7 @@ func (m *Manager) SaveLockFile() error {
 		return fmt.Errorf("failed to marshal lock file: %w", err)
 	}
 
-	return os.WriteFile("airuler.lock", data, 0644)
+	return os.WriteFile("airuler.lock", data, 0600)
 }
 
 func (m *Manager) Fetch(url, alias string, update bool) error {

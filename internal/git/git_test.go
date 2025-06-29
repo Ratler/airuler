@@ -8,7 +8,7 @@ import (
 )
 
 // newTestRepository creates a new repository for testing using the go-git implementation
-func newTestRepository(url, localPath string) GitRepository {
+func newTestRepository(url, localPath string) Repository {
 	factory := NewGoGitRepositoryFactory()
 	return factory.NewRepository(url, localPath)
 }
@@ -24,9 +24,9 @@ func TestNewRepository(t *testing.T) {
 	}
 
 	// Test that it implements the interface correctly
-	_, ok := repo.(GitRepository)
-	if !ok {
-		t.Error("Repository does not implement GitRepository interface")
+	// We can verify the interface implementation at compile time
+	if repo == nil {
+		t.Error("Repository is nil")
 	}
 }
 
@@ -45,7 +45,7 @@ func TestRepository_Exists(t *testing.T) {
 		},
 		{
 			name:     "repository does not exist",
-			setup:    func(path string) {}, // no setup
+			setup:    func(_ string) {}, // no setup
 			expected: false,
 		},
 		{
@@ -213,7 +213,7 @@ func TestRepository_Pull(t *testing.T) {
 	}{
 		{
 			name:      "repository does not exist",
-			setup:     func(path string) {}, // no setup
+			setup:     func(_ string) {}, // no setup
 			expectErr: true,
 		},
 		{
@@ -262,7 +262,7 @@ func TestRepository_GetCurrentCommit(t *testing.T) {
 	}{
 		{
 			name:      "repository does not exist",
-			setup:     func(path string) {}, // no setup
+			setup:     func(_ string) {}, // no setup
 			expectErr: true,
 		},
 		{
@@ -315,7 +315,7 @@ func TestRepository_GetRemoteCommit(t *testing.T) {
 	}{
 		{
 			name:      "repository does not exist",
-			setup:     func(path string) {}, // no setup
+			setup:     func(_ string) {}, // no setup
 			expectErr: true,
 		},
 		{
@@ -393,7 +393,7 @@ func TestRepository_CheckoutCommit(t *testing.T) {
 		{
 			name:      "repository does not exist",
 			commit:    "abc123",
-			setup:     func(path string) {}, // no setup
+			setup:     func(_ string) {}, // no setup
 			expectErr: true,
 		},
 		{
@@ -443,7 +443,7 @@ func TestRepository_CheckoutMainBranch(t *testing.T) {
 	}{
 		{
 			name:      "repository does not exist",
-			setup:     func(path string) {}, // no setup
+			setup:     func(_ string) {}, // no setup
 			expectErr: true,
 		},
 		{
@@ -494,7 +494,7 @@ func TestRepository_ResetToCommit(t *testing.T) {
 		{
 			name:      "repository does not exist",
 			commit:    "abc123",
-			setup:     func(path string) {}, // no setup
+			setup:     func(_ string) {}, // no setup
 			expectErr: true,
 		},
 		{

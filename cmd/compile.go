@@ -15,7 +15,6 @@ import (
 )
 
 var (
-	targetFlag  string
 	vendorFlag  string
 	vendorsFlag string
 	ruleFlag    string
@@ -46,7 +45,7 @@ Examples:
   airuler compile --vendor frontend  # Compile from specific vendor
   airuler compile --rule my-rule     # Compile specific rule`,
 	Args: cobra.MaximumNArgs(1),
-	RunE: func(cmd *cobra.Command, args []string) error {
+	RunE: func(_ *cobra.Command, args []string) error {
 		var targets []compiler.Target
 
 		if len(args) > 0 {
@@ -163,7 +162,7 @@ func compileTemplates(targets []compiler.Target) error {
 			// Strip front matter from template content before loading
 			cleanTemplateContent := stripTemplateFrontMatter(templateSource.Content)
 
-			data := template.TemplateData{
+			data := template.Data{
 				Name: templateName,
 				Description: getValueOrDefault(
 					frontMatter.Description,
@@ -197,7 +196,7 @@ func compileTemplates(targets []compiler.Target) error {
 				} else {
 					// Regular file writing for non-memory mode
 					outputPath := targetComp.GetOutputPath(target, rule.Filename)
-					if err := os.WriteFile(outputPath, []byte(rule.Content), 0644); err != nil {
+					if err := os.WriteFile(outputPath, []byte(rule.Content), 0600); err != nil {
 						return fmt.Errorf("failed to write %s: %w", outputPath, err)
 					}
 
@@ -217,7 +216,7 @@ func compileTemplates(targets []compiler.Target) error {
 			// Use clear section separators that Claude will understand
 			separator := "\n\n<!-- ==================== NEXT RULE SECTION ==================== -->\n\n"
 			combinedContent := strings.Join(memoryModeContent, separator)
-			if err := os.WriteFile(claudeMdPath, []byte(combinedContent), 0644); err != nil {
+			if err := os.WriteFile(claudeMdPath, []byte(combinedContent), 0600); err != nil {
 				return fmt.Errorf("failed to write CLAUDE.md: %w", err)
 			}
 			fmt.Printf("  ✅ Combined %d memory templates -> %s\n", len(memoryModeContent), claudeMdPath)
@@ -437,7 +436,12 @@ func getVendorTemplateDirs() []string {
 	if _, err := os.Stat("airuler.lock"); err == nil {
 		data, err := os.ReadFile("airuler.lock")
 		if err == nil {
-			yaml.Unmarshal(data, lockFile)
+			if err := yaml.Unmarshal(data, lockFile); err != nil {
+				// Log warning but continue - we can still use other template sources
+				if viper.GetBool("verbose") {
+					fmt.Printf("Warning: failed to parse airuler.lock: %v\n", err)
+				}
+			}
 		}
 	}
 

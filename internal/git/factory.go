@@ -5,7 +5,7 @@ import (
 )
 
 // DefaultGitRepositoryFactory returns the appropriate git factory based on configuration
-func DefaultGitRepositoryFactory() GitRepositoryFactory {
+func DefaultGitRepositoryFactory() RepositoryFactory {
 	// Check if we should use mock for testing (highest priority)
 	if os.Getenv("AIRULER_USE_MOCK_GIT") == "1" {
 		return NewMockGitRepositoryFactory()
@@ -15,9 +15,8 @@ func DefaultGitRepositoryFactory() GitRepositoryFactory {
 	return NewGoGitRepositoryFactory()
 }
 
-
 // NewGitRepository creates a new git repository using the default factory
-func NewGitRepository(url, localPath string) GitRepository {
+func NewGitRepository(url, localPath string) Repository {
 	factory := DefaultGitRepositoryFactory()
 	return factory.NewRepository(url, localPath)
 }

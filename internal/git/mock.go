@@ -6,11 +6,11 @@ import (
 	"path/filepath"
 )
 
-// MockRepository implements GitRepository interface for testing
+// MockRepository implements Repository interface for testing
 type MockRepository struct {
 	URL       string
 	LocalPath string
-	
+
 	// Test configuration
 	ShouldFailClone      bool
 	ShouldFailPull       bool
@@ -25,29 +25,29 @@ type MockRepository struct {
 	ResetCalled          bool
 }
 
-// MockGitRepositoryFactory creates mock repositories for testing
-type MockGitRepositoryFactory struct {
+// MockRepositoryFactory creates mock repositories for testing
+type MockRepositoryFactory struct {
 	Repositories map[string]*MockRepository
 }
 
 // NewMockGitRepositoryFactory creates a new mock factory
-func NewMockGitRepositoryFactory() *MockGitRepositoryFactory {
-	return &MockGitRepositoryFactory{
+func NewMockGitRepositoryFactory() *MockRepositoryFactory {
+	return &MockRepositoryFactory{
 		Repositories: make(map[string]*MockRepository),
 	}
 }
 
 // NewRepository creates a new mock repository instance
-func (f *MockGitRepositoryFactory) NewRepository(url, localPath string) GitRepository {
+func (f *MockRepositoryFactory) NewRepository(url, localPath string) Repository {
 	key := fmt.Sprintf("%s:%s", url, localPath)
 	if repo, exists := f.Repositories[key]; exists {
 		return repo
 	}
-	
+
 	// Create new mock repository with default settings
 	repo := &MockRepository{
-		URL:              url,
-		LocalPath:        localPath,
+		URL:               url,
+		LocalPath:         localPath,
 		MockCurrentCommit: "abc123def456",
 		MockRemoteCommit:  "def456abc123",
 	}
@@ -56,11 +56,11 @@ func (f *MockGitRepositoryFactory) NewRepository(url, localPath string) GitRepos
 }
 
 // ConfigureRepository allows test setup of mock behavior
-func (f *MockGitRepositoryFactory) ConfigureRepository(url, localPath string, config func(*MockRepository)) {
+func (f *MockRepositoryFactory) ConfigureRepository(url, localPath string, config func(*MockRepository)) {
 	key := fmt.Sprintf("%s:%s", url, localPath)
 	repo := &MockRepository{
-		URL:       url,
-		LocalPath: localPath,
+		URL:               url,
+		LocalPath:         localPath,
 		MockCurrentCommit: "abc123def456",
 		MockRemoteCommit:  "def456abc123",
 	}
@@ -74,12 +74,12 @@ func (r *MockRepository) Clone() error {
 	if r.ShouldFailClone {
 		return fmt.Errorf("mock clone failed for %s", r.URL)
 	}
-	
+
 	// Create directory structure to simulate successful clone
 	if err := os.MkdirAll(filepath.Join(r.LocalPath, ".git"), 0755); err != nil {
 		return err
 	}
-	
+
 	return nil
 }
 
@@ -123,12 +123,12 @@ func (r *MockRepository) HasUpdates() (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	
+
 	remote, err := r.GetRemoteCommit()
 	if err != nil {
 		return false, err
 	}
-	
+
 	return current != remote, nil
 }
 
@@ -137,7 +137,7 @@ func (r *MockRepository) Exists() bool {
 	if r.ShouldExist {
 		return true
 	}
-	
+
 	// Check if .git directory exists (same as real implementation)
 	gitDir := filepath.Join(r.LocalPath, ".git")
 	_, err := os.Stat(gitDir)
@@ -151,7 +151,7 @@ func (r *MockRepository) Remove() error {
 }
 
 // CheckoutCommit implementation for mock
-func (r *MockRepository) CheckoutCommit(commit string) error {
+func (r *MockRepository) CheckoutCommit(_ string) error {
 	r.CheckoutCommitCalled = true
 	if !r.Exists() {
 		return fmt.Errorf("repository does not exist at %s", r.LocalPath)
@@ -168,7 +168,7 @@ func (r *MockRepository) CheckoutMainBranch() error {
 }
 
 // ResetToCommit implementation for mock
-func (r *MockRepository) ResetToCommit(commit string) error {
+func (r *MockRepository) ResetToCommit(_ string) error {
 	r.ResetCalled = true
 	if !r.Exists() {
 		return fmt.Errorf("repository does not exist at %s", r.LocalPath)
@@ -176,6 +176,6 @@ func (r *MockRepository) ResetToCommit(commit string) error {
 	return nil
 }
 
-// Ensure MockRepository implements GitRepository interface
-var _ GitRepository = (*MockRepository)(nil)
-var _ GitRepositoryFactory = (*MockGitRepositoryFactory)(nil)
+// Ensure MockRepository implements Repository interface
+var _ Repository = (*MockRepository)(nil)
+var _ RepositoryFactory = (*MockRepositoryFactory)(nil)

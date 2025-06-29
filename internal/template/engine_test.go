@@ -87,42 +87,42 @@ func TestRender(t *testing.T) {
 	tests := []struct {
 		name         string
 		templateName string
-		data         TemplateData
+		data         Data
 		expected     string
 		expectError  bool
 	}{
 		{
 			name:         "simple template",
 			templateName: "simple",
-			data:         TemplateData{Name: "World"},
+			data:         Data{Name: "World"},
 			expected:     "Hello World!",
 			expectError:  false,
 		},
 		{
 			name:         "conditional template - cursor",
 			templateName: "conditional",
-			data:         TemplateData{Target: "cursor"},
+			data:         Data{Target: "cursor"},
 			expected:     "Cursor Mode",
 			expectError:  false,
 		},
 		{
 			name:         "conditional template - other",
 			templateName: "conditional",
-			data:         TemplateData{Target: "claude"},
+			data:         Data{Target: "claude"},
 			expected:     "Other Mode",
 			expectError:  false,
 		},
 		{
 			name:         "functions template",
 			templateName: "functions",
-			data:         TemplateData{Name: "test", Target: "CURSOR"},
+			data:         Data{Name: "test", Target: "CURSOR"},
 			expected:     "TEST - cursor",
 			expectError:  false,
 		},
 		{
 			name:         "non-existent template",
 			templateName: "nonexistent",
-			data:         TemplateData{},
+			data:         Data{},
 			expected:     "",
 			expectError:  true,
 		},
@@ -209,37 +209,37 @@ func TestTemplateFunctions(t *testing.T) {
 	tests := []struct {
 		name     string
 		template string
-		data     TemplateData
+		data     Data
 		expected string
 	}{
 		{
 			name:     "lower function",
 			template: "{{lower .Name}}",
-			data:     TemplateData{Name: "HELLO"},
+			data:     Data{Name: "HELLO"},
 			expected: "hello",
 		},
 		{
 			name:     "upper function",
 			template: "{{upper .Name}}",
-			data:     TemplateData{Name: "hello"},
+			data:     Data{Name: "hello"},
 			expected: "HELLO",
 		},
 		{
 			name:     "title function",
 			template: "{{title .Name}}",
-			data:     TemplateData{Name: "hello world"},
+			data:     Data{Name: "hello world"},
 			expected: "Hello World",
 		},
 		{
 			name:     "contains function",
 			template: "{{if contains .Name \"test\"}}Found{{else}}Not found{{end}}",
-			data:     TemplateData{Name: "this is a test"},
+			data:     Data{Name: "this is a test"},
 			expected: "Found",
 		},
 		{
 			name:     "replace function",
 			template: "{{replace .Name \"old\" \"new\"}}",
-			data:     TemplateData{Name: "old value"},
+			data:     Data{Name: "old value"},
 			expected: "new value",
 		},
 	}
@@ -280,7 +280,7 @@ This is a {{lower .Target}} rule for {{.Name}}.
 - Use {{upper .Target}} best practices
 - {{replace .Description "rule" "guideline"}}`
 
-	data := TemplateData{
+	data := Data{
 		Target:      "cursor",
 		Name:        "typescript",
 		Description: "TypeScript coding rule",

@@ -28,7 +28,7 @@ Examples:
   airuler update frontend,backend   # Update multiple vendors
   airuler update --interactive      # Update with confirmation prompts
   airuler update --dry-run          # Show what would be updated`,
-	RunE: func(cmd *cobra.Command, args []string) error {
+	RunE: func(_ *cobra.Command, args []string) error {
 		// Load config
 		cfg := config.NewDefaultConfig()
 		if viper.ConfigFileUsed() != "" {
@@ -70,7 +70,7 @@ func init() {
 	updateCmd.Flags().BoolVar(&updateDryRun, "dry-run", false, "show what would be updated without doing it")
 }
 
-func showUpdateStatus(manager *vendor.Manager, vendorNames []string) error {
+func showUpdateStatus(manager *vendor.Manager, _ []string) error {
 	fmt.Println("Update status (dry run):")
 	return manager.Status()
 }

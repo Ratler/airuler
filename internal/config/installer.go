@@ -54,7 +54,7 @@ func SaveInstallationTracker(dir string, tracker *InstallationTracker) error {
 	}
 
 	trackerPath := filepath.Join(dir, installTrackerFileName)
-	return os.WriteFile(trackerPath, data, 0644)
+	return os.WriteFile(trackerPath, data, 0600)
 }
 
 // AddInstallation adds a new installation record to the tracker

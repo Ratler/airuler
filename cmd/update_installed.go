@@ -33,7 +33,7 @@ Examples:
   airuler update-installed --global          # Update only global installations
   airuler update-installed --project         # Update only project installations`,
 	Args: cobra.MaximumNArgs(2),
-	RunE: func(cmd *cobra.Command, args []string) error {
+	RunE: func(_ *cobra.Command, args []string) error {
 		if len(args) >= 1 {
 			updateInstalledTarget = args[0]
 		}
@@ -219,7 +219,6 @@ func updateInstallationRecord(installation config.InstallationRecord) error {
 
 	if installation.Global {
 		return config.SaveGlobalInstallationTracker(tracker)
-	} else {
-		return config.SaveProjectInstallationTracker(tracker)
 	}
+	return config.SaveProjectInstallationTracker(tracker)
 }

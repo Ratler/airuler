@@ -145,7 +145,7 @@ func TestGetGlobalInstallDir(t *testing.T) {
 	for _, target := range tests {
 		t.Run(string(target), func(t *testing.T) {
 			result, err := getGlobalInstallDir(target)
-			
+
 			// Copilot should fail for global installation
 			if target == compiler.TargetCopilot {
 				if err == nil {
@@ -153,7 +153,7 @@ func TestGetGlobalInstallDir(t *testing.T) {
 				}
 				return
 			}
-			
+
 			if err != nil {
 				t.Errorf("getGlobalInstallDir() failed for %s: %v", target, err)
 			}
@@ -166,15 +166,16 @@ func TestGetGlobalInstallDir(t *testing.T) {
 			// Check OS-specific expectations
 			switch target {
 			case compiler.TargetCursor:
-				if runtime.GOOS == "darwin" {
+				switch runtime.GOOS {
+				case "darwin":
 					if !containsSubstring(result, "Library/Application Support") {
 						t.Errorf("macOS Cursor path should contain Library/Application Support, got %q", result)
 					}
-				} else if runtime.GOOS == "windows" {
+				case "windows":
 					if !containsSubstring(result, "AppData") {
 						t.Errorf("Windows Cursor path should contain AppData, got %q", result)
 					}
-				} else {
+				default:
 					if !containsSubstring(result, ".config") {
 						t.Errorf("Linux Cursor path should contain .config, got %q", result)
 					}

@@ -53,7 +53,7 @@ func CreateTestRepository(t *testing.T) *TestRepository {
 
 	// Create initial commit
 	testFile := filepath.Join(repoPath, "README.md")
-	err = os.WriteFile(testFile, []byte("# Test Repository\n"), 0644)
+	err = os.WriteFile(testFile, []byte("# Test Repository\n"), 0600)
 	if err != nil {
 		t.Fatalf("Failed to create test file: %v", err)
 	}
@@ -121,7 +121,7 @@ func CreateTestRepositoryWithRemote(t *testing.T) *TestRepository {
 
 	// Create initial commit
 	testFile := filepath.Join(localPath, "README.md")
-	err = os.WriteFile(testFile, []byte("# Test Repository\n"), 0644)
+	err = os.WriteFile(testFile, []byte("# Test Repository\n"), 0600)
 	if err != nil {
 		t.Fatalf("Failed to create test file: %v", err)
 	}
@@ -162,7 +162,7 @@ func (tr *TestRepository) AddCommit(message string) string {
 
 	// Create a new test file
 	testFile := filepath.Join(tr.Path, "file-"+message+".txt")
-	err := os.WriteFile(testFile, []byte("Content for "+message), 0644)
+	err := os.WriteFile(testFile, []byte("Content for "+message), 0600)
 	if err != nil {
 		tr.t.Fatalf("Failed to create test file: %v", err)
 	}

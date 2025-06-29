@@ -27,7 +27,7 @@ var configInitCmd = &cobra.Command{
 	Use:   "init",
 	Short: "Initialize global configuration",
 	Long:  `Create a global configuration file with default settings.`,
-	RunE: func(cmd *cobra.Command, args []string) error {
+	RunE: func(_ *cobra.Command, _ []string) error {
 		return initGlobalConfig()
 	},
 }
@@ -36,7 +36,7 @@ var configPathCmd = &cobra.Command{
 	Use:   "path",
 	Short: "Show configuration file paths",
 	Long:  `Show the paths where airuler looks for configuration files.`,
-	RunE: func(cmd *cobra.Command, args []string) error {
+	RunE: func(_ *cobra.Command, _ []string) error {
 		return showConfigPaths()
 	},
 }
@@ -45,7 +45,7 @@ var configEditCmd = &cobra.Command{
 	Use:   "edit",
 	Short: "Open global config for editing",
 	Long:  `Open the global configuration file in the default editor.`,
-	RunE: func(cmd *cobra.Command, args []string) error {
+	RunE: func(_ *cobra.Command, _ []string) error {
 		return editGlobalConfig()
 	},
 }
@@ -76,7 +76,7 @@ func initGlobalConfig() error {
 		return fmt.Errorf("failed to marshal config: %w", err)
 	}
 
-	if err := os.WriteFile(globalConfigPath, cfgData, 0644); err != nil {
+	if err := os.WriteFile(globalConfigPath, cfgData, 0600); err != nil {
 		return fmt.Errorf("failed to write global config: %w", err)
 	}
 

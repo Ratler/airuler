@@ -35,7 +35,7 @@ Examples:
   airuler install cursor my-rule            # Install specific Cursor rule
   airuler install --project ./my-project    # Install to project directory`,
 	Args: cobra.MaximumNArgs(2),
-	RunE: func(cmd *cobra.Command, args []string) error {
+	RunE: func(_ *cobra.Command, args []string) error {
 		if len(args) >= 1 {
 			installTarget = args[0]
 		}
@@ -246,7 +246,7 @@ func installCopilotRules(compiledDir string, files []os.DirEntry) (int, error) {
 	}
 
 	// Write combined content
-	if err := os.WriteFile(targetPath, []byte(combinedContent.String()), 0644); err != nil {
+	if err := os.WriteFile(targetPath, []byte(combinedContent.String()), 0600); err != nil {
 		return 0, fmt.Errorf("failed to write copilot instructions: %w", err)
 	}
 
@@ -263,7 +263,7 @@ func installCopilotRules(compiledDir string, files []os.DirEntry) (int, error) {
 	return 1, nil
 }
 
-func installFile(source, target string, targetType compiler.Target) error {
+func installFile(source, target string, _ compiler.Target) error {
 	// Check if target exists and create backup
 	if _, err := os.Stat(target); err == nil && !installForce {
 		// Create backup
@@ -283,7 +283,7 @@ func copyFile(source, dest string) error {
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(dest, content, 0644)
+	return os.WriteFile(dest, content, 0600)
 }
 
 func getTargetInstallDir(target compiler.Target) (string, error) {
@@ -301,11 +301,12 @@ func getGlobalInstallDir(target compiler.Target) (string, error) {
 
 	switch target {
 	case compiler.TargetCursor:
-		if runtime.GOOS == "darwin" {
+		switch runtime.GOOS {
+		case "darwin":
 			return filepath.Join(homeDir, "Library", "Application Support", "Cursor", "User", "globalStorage", "cursor.rules"), nil
-		} else if runtime.GOOS == "windows" {
+		case "windows":
 			return filepath.Join(homeDir, "AppData", "Roaming", "Cursor", "User", "globalStorage", "cursor.rules"), nil
-		} else {
+		default:
 			return filepath.Join(homeDir, ".config", "Cursor", "User", "globalStorage", "cursor.rules"), nil
 		}
 	case compiler.TargetClaude:
@@ -420,11 +421,10 @@ func installMemoryFile(source, target string) error {
 			strings.TrimSpace(string(newContent)) + "\n"
 
 		// Write combined content
-		return os.WriteFile(target, []byte(combinedContent), 0644)
-	} else {
-		// File doesn't exist - create new
-		return os.WriteFile(target, newContent, 0644)
+		return os.WriteFile(target, []byte(combinedContent), 0600)
 	}
+	// File doesn't exist - create new
+	return os.WriteFile(target, newContent, 0600)
 }
 
 func recordInstallation(target compiler.Target, rule, filePath, mode string) error {

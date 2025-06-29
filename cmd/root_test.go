@@ -96,7 +96,7 @@ func TestRootCommandSubcommands(t *testing.T) {
 	}
 }
 
-func TestInitConfig(t *testing.T) {
+func TestInitConfig(_ *testing.T) {
 	// Save original environment
 	originalConfigFile := cfgFile
 	defer func() { cfgFile = originalConfigFile }()
@@ -124,7 +124,7 @@ func TestInitConfig(t *testing.T) {
 	// Again, mainly testing that it doesn't panic with default settings
 }
 
-func TestInitConfigWithEnvironment(t *testing.T) {
+func TestInitConfigWithEnvironment(_ *testing.T) {
 	// Save original environment
 	originalConfigFile := cfgFile
 	defer func() { cfgFile = originalConfigFile }()
@@ -162,6 +162,7 @@ func TestExecuteFunction(t *testing.T) {
 	if err := rootCmd.ValidateArgs([]string{"--help"}); err != nil {
 		// This is expected to not validate since --help is handled by cobra
 		// The test passes if we get here without panicking
+		t.Logf("Expected validation error for --help flag: %v", err)
 	}
 }
 

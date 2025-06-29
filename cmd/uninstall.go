@@ -32,7 +32,7 @@ Examples:
   airuler uninstall --project              # Uninstall only project installations
   airuler uninstall --force                # Skip confirmation prompts`,
 	Args: cobra.MaximumNArgs(2),
-	RunE: func(cmd *cobra.Command, args []string) error {
+	RunE: func(_ *cobra.Command, args []string) error {
 		if len(args) >= 1 {
 			uninstallTarget = args[0]
 		}
@@ -103,7 +103,11 @@ func uninstallRules() error {
 	if !uninstallForce {
 		fmt.Print("\nProceed with uninstallation? [y/N]: ")
 		var response string
-		fmt.Scanln(&response)
+		if _, err := fmt.Scanln(&response); err != nil {
+			// If input fails, default to cancel for safety
+			fmt.Println("\nInput error, uninstallation cancelled")
+			return err
+		}
 		if response != "y" && response != "Y" && response != "yes" && response != "Yes" {
 			fmt.Println("Uninstallation cancelled")
 			return nil

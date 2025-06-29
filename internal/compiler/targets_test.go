@@ -62,7 +62,7 @@ This is a rule for {{.Target}}.
 	tests := []struct {
 		name         string
 		target       Target
-		data         template.TemplateData
+		data         template.Data
 		expectError  bool
 		checkContent func(string) bool
 		checkFile    func(string) bool
@@ -70,7 +70,7 @@ This is a rule for {{.Target}}.
 		{
 			name:   "cursor target",
 			target: TargetCursor,
-			data: template.TemplateData{
+			data: template.Data{
 				Name:        "test-rule",
 				Description: "Test rule",
 				Globs:       "**/*.ts",
@@ -89,7 +89,7 @@ This is a rule for {{.Target}}.
 		{
 			name:   "claude target",
 			target: TargetClaude,
-			data: template.TemplateData{
+			data: template.Data{
 				Name:        "test-rule",
 				Description: "Test rule",
 			},
@@ -106,7 +106,7 @@ This is a rule for {{.Target}}.
 		{
 			name:   "cline target",
 			target: TargetCline,
-			data: template.TemplateData{
+			data: template.Data{
 				Name:        "test-rule",
 				Description: "Test rule",
 			},
@@ -122,7 +122,7 @@ This is a rule for {{.Target}}.
 		{
 			name:   "copilot target",
 			target: TargetCopilot,
-			data: template.TemplateData{
+			data: template.Data{
 				Name:        "test-rule",
 				Description: "Test rule",
 				Globs:       "**/*.ts",
@@ -180,10 +180,10 @@ func TestProcessors(t *testing.T) {
 
 	tests := []struct {
 		name         string
-		processor    func(string, string, template.TemplateData) (string, string)
+		processor    func(string, string, template.Data) (string, string)
 		content      string
 		templateName string
-		data         template.TemplateData
+		data         template.Data
 		expectedExt  string
 		checkContent func(string) bool
 	}{
@@ -192,7 +192,7 @@ func TestProcessors(t *testing.T) {
 			processor:    compiler.processCursor,
 			content:      "Simple content",
 			templateName: "test",
-			data:         template.TemplateData{Description: "Test desc", Globs: "*.ts"},
+			data:         template.Data{Description: "Test desc", Globs: "*.ts"},
 			expectedExt:  ".mdc",
 			checkContent: func(content string) bool {
 				return strings.Contains(content, "---") &&
@@ -206,7 +206,7 @@ func TestProcessors(t *testing.T) {
 			processor:    compiler.processCursor,
 			content:      "---\nexisting: true\n---\nContent",
 			templateName: "test",
-			data:         template.TemplateData{},
+			data:         template.Data{},
 			expectedExt:  ".mdc",
 			checkContent: func(content string) bool {
 				return strings.Contains(content, "existing: true") &&
@@ -218,7 +218,7 @@ func TestProcessors(t *testing.T) {
 			processor:    compiler.processClaude,
 			content:      "Content with $ARGUMENTS",
 			templateName: "test",
-			data:         template.TemplateData{},
+			data:         template.Data{},
 			expectedExt:  ".md",
 			checkContent: func(content string) bool {
 				return strings.Contains(content, "Content with $ARGUMENTS")
@@ -229,7 +229,7 @@ func TestProcessors(t *testing.T) {
 			processor:    compiler.processCline,
 			content:      "Content", // Front matter now stripped at template loading stage
 			templateName: "test",
-			data:         template.TemplateData{},
+			data:         template.Data{},
 			expectedExt:  ".md",
 			checkContent: func(content string) bool {
 				return content == "Content"
@@ -240,7 +240,7 @@ func TestProcessors(t *testing.T) {
 			processor:    compiler.processCopilot,
 			content:      "Simple content",
 			templateName: "test",
-			data:         template.TemplateData{Description: "Test desc", Globs: "*.ts"},
+			data:         template.Data{Description: "Test desc", Globs: "*.ts"},
 			expectedExt:  ".copilot-instructions.md",
 			checkContent: func(content string) bool {
 				return !strings.Contains(content, "---") &&
@@ -254,7 +254,7 @@ func TestProcessors(t *testing.T) {
 			processor:    compiler.processCopilot,
 			content:      "---\ndescription: test\napplyTo: *.ts\n---\n\nSimple content",
 			templateName: "test",
-			data:         template.TemplateData{Description: "Test desc", Globs: "*.ts"},
+			data:         template.Data{Description: "Test desc", Globs: "*.ts"},
 			expectedExt:  ".copilot-instructions.md",
 			checkContent: func(content string) bool {
 				return !strings.Contains(content, "---") &&
@@ -307,36 +307,36 @@ func TestGetOutputPath(t *testing.T) {
 func TestHelperFunctions(t *testing.T) {
 	tests := []struct {
 		name     string
-		function func(template.TemplateData, string) string
-		data     template.TemplateData
+		function func(template.Data, string) string
+		data     template.Data
 		fallback string
 		expected string
 	}{
 		{
 			name:     "getDescription with data",
 			function: getDescription,
-			data:     template.TemplateData{Description: "Custom description"},
+			data:     template.Data{Description: "Custom description"},
 			fallback: "fallback",
 			expected: "Custom description",
 		},
 		{
 			name:     "getDescription with fallback",
 			function: getDescription,
-			data:     template.TemplateData{},
+			data:     template.Data{},
 			fallback: "fallback",
 			expected: "AI coding rules for fallback",
 		},
 		{
 			name:     "getGlobs with data",
-			function: func(data template.TemplateData, _ string) string { return getGlobs(data) },
-			data:     template.TemplateData{Globs: "*.ts,*.js"},
+			function: func(data template.Data, _ string) string { return getGlobs(data) },
+			data:     template.Data{Globs: "*.ts,*.js"},
 			fallback: "",
 			expected: "*.ts,*.js",
 		},
 		{
 			name:     "getGlobs with default",
-			function: func(data template.TemplateData, _ string) string { return getGlobs(data) },
-			data:     template.TemplateData{},
+			function: func(data template.Data, _ string) string { return getGlobs(data) },
+			data:     template.Data{},
 			fallback: "",
 			expected: "**/*",
 		},

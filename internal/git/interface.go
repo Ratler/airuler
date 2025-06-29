@@ -1,7 +1,7 @@
 package git
 
-// GitRepository defines the interface for git repository operations
-type GitRepository interface {
+// Repository defines the interface for git repository operations
+type Repository interface {
 	// Clone clones the repository to the local path
 	Clone() error
 
@@ -33,9 +33,8 @@ type GitRepository interface {
 	ResetToCommit(commit string) error
 }
 
-// GitRepositoryFactory creates git repository instances
-type GitRepositoryFactory interface {
+// RepositoryFactory creates git repository instances
+type RepositoryFactory interface {
 	// NewRepository creates a new git repository instance
-	NewRepository(url, localPath string) GitRepository
+	NewRepository(url, localPath string) Repository
 }
-

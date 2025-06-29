@@ -22,7 +22,7 @@ This should go to CLAUDE.md`
 		t.Fatalf("Failed to load template: %v", err)
 	}
 
-	data := template.TemplateData{
+	data := template.Data{
 		Mode: "memory",
 	}
 
@@ -56,7 +56,7 @@ This should go to commands/`
 		t.Fatalf("Failed to load template: %v", err)
 	}
 
-	data := template.TemplateData{
+	data := template.Data{
 		Mode: "command",
 	}
 
@@ -90,7 +90,7 @@ This should generate both memory and command versions`
 		t.Fatalf("Failed to load template: %v", err)
 	}
 
-	data := template.TemplateData{
+	data := template.Data{
 		Mode: "both",
 	}
 
@@ -136,7 +136,7 @@ No mode specified, should default to command`
 		t.Fatalf("Failed to load template: %v", err)
 	}
 
-	data := template.TemplateData{
+	data := template.Data{
 		// Mode not set
 	}
 
@@ -188,7 +188,7 @@ Always validate input and sanitize output.`,
 			t.Fatalf("Failed to load template %s: %v", tmpl.name, err)
 		}
 
-		data := template.TemplateData{
+		data := template.Data{
 			Mode: "memory",
 		}
 

@@ -9,12 +9,12 @@ import (
 func TestMain(m *testing.M) {
 	// Ensure we use mock git for all tests in this package
 	os.Setenv("AIRULER_USE_MOCK_GIT", "1")
-	
+
 	// Run tests
 	code := m.Run()
-	
+
 	// Clean up (optional)
 	os.Unsetenv("AIRULER_USE_MOCK_GIT")
-	
+
 	os.Exit(code)
 }

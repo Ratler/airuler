@@ -28,7 +28,7 @@ Examples:
   airuler fetch https://github.com/user/rules-repo --as my-rules
   airuler fetch https://github.com/user/rules-repo --update`,
 	Args: cobra.MaximumNArgs(1),
-	RunE: func(cmd *cobra.Command, args []string) error {
+	RunE: func(_ *cobra.Command, args []string) error {
 		// Load config
 		cfg := config.NewDefaultConfig()
 		if viper.ConfigFileUsed() != "" {

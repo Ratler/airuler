@@ -33,7 +33,7 @@ func (c *Compiler) LoadTemplate(name, content string) error {
 	return c.engine.LoadTemplate(name, content)
 }
 
-func (c *Compiler) CompileTemplate(templateName string, target Target, data template.TemplateData) (CompiledRule, error) {
+func (c *Compiler) CompileTemplate(templateName string, target Target, data template.Data) (CompiledRule, error) {
 	// Set target in data
 	data.Target = string(target)
 
@@ -55,7 +55,7 @@ func (c *Compiler) CompileTemplate(templateName string, target Target, data temp
 	}, nil
 }
 
-func (c *Compiler) CompileTemplateWithModes(templateName string, target Target, data template.TemplateData) ([]CompiledRule, error) {
+func (c *Compiler) CompileTemplateWithModes(templateName string, target Target, data template.Data) ([]CompiledRule, error) {
 	// For "both" mode with Claude target, generate both memory and command versions
 	if target == TargetClaude && data.Mode == "both" {
 		var rules []CompiledRule
@@ -90,7 +90,7 @@ func (c *Compiler) CompileTemplateWithModes(templateName string, target Target, 
 	return []CompiledRule{rule}, nil
 }
 
-func (c *Compiler) postProcess(content, templateName string, target Target, data template.TemplateData) (string, string) {
+func (c *Compiler) postProcess(content, templateName string, target Target, data template.Data) (string, string) {
 	switch target {
 	case TargetCursor:
 		return c.processCursor(content, templateName, data)
@@ -105,7 +105,7 @@ func (c *Compiler) postProcess(content, templateName string, target Target, data
 	}
 }
 
-func (c *Compiler) processCursor(content, templateName string, data template.TemplateData) (string, string) {
+func (c *Compiler) processCursor(content, templateName string, data template.Data) (string, string) {
 	// Cursor expects .mdc files with YAML front matter
 	filename := filepath.Base(templateName) + ".mdc"
 
@@ -124,7 +124,7 @@ alwaysApply: true
 	return content, filename
 }
 
-func (c *Compiler) processClaude(content, templateName string, data template.TemplateData) (string, string) {
+func (c *Compiler) processClaude(content, templateName string, data template.Data) (string, string) {
 	// Determine installation mode (default to "command")
 	mode := data.Mode
 	if mode == "" {
@@ -148,14 +148,14 @@ func (c *Compiler) processClaude(content, templateName string, data template.Tem
 	}
 }
 
-func (c *Compiler) processCline(content, templateName string, data template.TemplateData) (string, string) {
+func (c *Compiler) processCline(content, templateName string, _ template.Data) (string, string) {
 	// Cline uses .md files in .clinerules/ directory
 	filename := filepath.Base(templateName) + ".md"
 
 	return content, filename
 }
 
-func (c *Compiler) processCopilot(content, templateName string, data template.TemplateData) (string, string) {
+func (c *Compiler) processCopilot(content, templateName string, _ template.Data) (string, string) {
 	// GitHub Copilot uses single .github/copilot-instructions.md file with plain Markdown
 	// During compilation, we generate unique filenames and combine them during installation
 	filename := filepath.Base(templateName) + ".copilot-instructions.md"
@@ -172,14 +172,14 @@ func (c *Compiler) processCopilot(content, templateName string, data template.Te
 	return content, filename
 }
 
-func getDescription(data template.TemplateData, fallback string) string {
+func getDescription(data template.Data, fallback string) string {
 	if data.Description != "" {
 		return data.Description
 	}
 	return fmt.Sprintf("AI coding rules for %s", fallback)
 }
 
-func getGlobs(data template.TemplateData) string {
+func getGlobs(data template.Data) string {
 	if data.Globs != "" {
 		return data.Globs
 	}
