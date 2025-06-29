@@ -802,6 +802,7 @@ When working with this React TypeScript codebase:
    ```bash
    airuler update
    airuler compile
+   airuler update-installed
    ```
 
 ### CI/CD Integration
