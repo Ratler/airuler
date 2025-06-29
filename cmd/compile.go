@@ -76,6 +76,15 @@ func init() {
 }
 
 func compileTemplates(targets []compiler.Target) error {
+	// Clean the compiled directory first to ensure a fresh start
+	compiledDir := "compiled"
+	if _, err := os.Stat(compiledDir); err == nil {
+		fmt.Printf("Cleaning compiled directory...\n")
+		if err := os.RemoveAll(compiledDir); err != nil {
+			return fmt.Errorf("failed to clean compiled directory: %w", err)
+		}
+	}
+
 	// Load templates
 	templateDirs := []string{"templates"}
 
