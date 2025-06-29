@@ -323,3 +323,163 @@ This is a test rule for {{.Target}}.`
 		}
 	}
 }
+
+func TestParseTemplateFrontMatter(t *testing.T) {
+	tests := []struct {
+		name     string
+		content  string
+		expected *TemplateFrontMatter
+		hasError bool
+	}{
+		{
+			name: "Basic front matter",
+			content: `---
+description: "Test template"
+claude_mode: "memory"
+globs: "**/*.go"
+---
+Template content here`,
+			expected: &TemplateFrontMatter{
+				Description: "Test template",
+				ClaudeMode:  "memory",
+				Globs:       "**/*.go",
+			},
+			hasError: false,
+		},
+		{
+			name: "Extended fields",
+			content: `---
+description: "Test template with extended fields"
+claude_mode: "both"
+globs: "**/*.{js,ts}"
+project_type: "web-application"
+language: "TypeScript"
+framework: "React"
+tags:
+  - "frontend"
+  - "spa"
+always_apply: "true"
+documentation: "docs/frontend.md"
+style_guide: "Airbnb JavaScript style guide"
+examples: "examples/react/"
+custom:
+  build_tool: "Vite"
+  testing_framework: "Jest"
+---
+Template with extended fields`,
+			expected: &TemplateFrontMatter{
+				Description:   "Test template with extended fields",
+				ClaudeMode:    "both",
+				Globs:         "**/*.{js,ts}",
+				ProjectType:   "web-application",
+				Language:      "TypeScript",
+				Framework:     "React",
+				Tags:          []string{"frontend", "spa"},
+				AlwaysApply:   "true",
+				Documentation: "docs/frontend.md",
+				StyleGuide:    "Airbnb JavaScript style guide",
+				Examples:      "examples/react/",
+				Custom: map[string]interface{}{
+					"build_tool":        "Vite",
+					"testing_framework": "Jest",
+				},
+			},
+			hasError: false,
+		},
+		{
+			name: "No front matter",
+			content: `Template without front matter
+Just content here`,
+			expected: &TemplateFrontMatter{},
+			hasError: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := parseTemplateFrontMatter(tt.content)
+
+			if tt.hasError {
+				if err == nil {
+					t.Errorf("parseTemplateFrontMatter() expected error but got none")
+				}
+				return
+			}
+
+			if err != nil {
+				t.Errorf("parseTemplateFrontMatter() unexpected error: %v", err)
+				return
+			}
+
+			if result == nil {
+				t.Errorf("parseTemplateFrontMatter() returned nil result")
+				return
+			}
+
+			// Compare basic fields
+			if result.Description != tt.expected.Description {
+				t.Errorf("Description = %q, expected %q", result.Description, tt.expected.Description)
+			}
+			if result.ClaudeMode != tt.expected.ClaudeMode {
+				t.Errorf("ClaudeMode = %q, expected %q", result.ClaudeMode, tt.expected.ClaudeMode)
+			}
+			if result.Globs != tt.expected.Globs {
+				t.Errorf("Globs = %q, expected %q", result.Globs, tt.expected.Globs)
+			}
+
+			// Compare extended fields
+			if result.ProjectType != tt.expected.ProjectType {
+				t.Errorf("ProjectType = %q, expected %q", result.ProjectType, tt.expected.ProjectType)
+			}
+			if result.Language != tt.expected.Language {
+				t.Errorf("Language = %q, expected %q", result.Language, tt.expected.Language)
+			}
+			if result.Framework != tt.expected.Framework {
+				t.Errorf("Framework = %q, expected %q", result.Framework, tt.expected.Framework)
+			}
+			if result.AlwaysApply != tt.expected.AlwaysApply {
+				t.Errorf("AlwaysApply = %q, expected %q", result.AlwaysApply, tt.expected.AlwaysApply)
+			}
+			if result.Documentation != tt.expected.Documentation {
+				t.Errorf("Documentation = %q, expected %q", result.Documentation, tt.expected.Documentation)
+			}
+			if result.StyleGuide != tt.expected.StyleGuide {
+				t.Errorf("StyleGuide = %q, expected %q", result.StyleGuide, tt.expected.StyleGuide)
+			}
+			if result.Examples != tt.expected.Examples {
+				t.Errorf("Examples = %q, expected %q", result.Examples, tt.expected.Examples)
+			}
+
+			// Compare tags slice
+			if len(result.Tags) != len(tt.expected.Tags) {
+				t.Errorf("Tags length = %d, expected %d", len(result.Tags), len(tt.expected.Tags))
+			} else {
+				for i, tag := range result.Tags {
+					if tag != tt.expected.Tags[i] {
+						t.Errorf("Tags[%d] = %q, expected %q", i, tag, tt.expected.Tags[i])
+					}
+				}
+			}
+
+			// Compare custom map
+			if tt.expected.Custom == nil && result.Custom != nil {
+				t.Errorf("Custom should be nil but got %v", result.Custom)
+			} else if tt.expected.Custom != nil {
+				if result.Custom == nil {
+					t.Errorf("Custom should not be nil")
+				} else {
+					if len(result.Custom) != len(tt.expected.Custom) {
+						t.Errorf("Custom map length = %d, expected %d", len(result.Custom), len(tt.expected.Custom))
+					}
+					for key, expectedValue := range tt.expected.Custom {
+						if actualValue, exists := result.Custom[key]; !exists {
+							t.Errorf("Custom map missing key %q", key)
+						} else if actualValue != expectedValue {
+							t.Errorf("Custom[%q] = %v, expected %v", key, actualValue, expectedValue)
+						}
+					}
+				}
+			}
+		})
+	}
+}

@@ -28,6 +28,17 @@ type TemplateFrontMatter struct {
 	ClaudeMode  string `yaml:"claude_mode"`
 	Description string `yaml:"description"`
 	Globs       string `yaml:"globs"`
+
+	// Extended fields for advanced templates
+	ProjectType   string                 `yaml:"project_type"`
+	Language      string                 `yaml:"language"`
+	Framework     string                 `yaml:"framework"`
+	Tags          []string               `yaml:"tags"`
+	AlwaysApply   string                 `yaml:"always_apply"`
+	Documentation string                 `yaml:"documentation"`
+	StyleGuide    string                 `yaml:"style_guide"`
+	Examples      string                 `yaml:"examples"`
+	Custom        map[string]interface{} `yaml:"custom"`
 }
 
 type TemplateSource struct {
@@ -175,6 +186,11 @@ func compileTemplates(targets []compiler.Target) error {
 			// Strip front matter from template content before loading
 			cleanTemplateContent := stripTemplateFrontMatter(templateSource.Content)
 
+			// Ensure Custom map is initialized
+			if frontMatter.Custom == nil {
+				frontMatter.Custom = make(map[string]interface{})
+			}
+
 			data := template.Data{
 				Name: templateName,
 				Description: getValueOrDefault(
@@ -183,6 +199,17 @@ func compileTemplates(targets []compiler.Target) error {
 				),
 				Globs: getValueOrDefault(frontMatter.Globs, "**/*"),
 				Mode:  frontMatter.ClaudeMode,
+
+				// Extended fields from template front matter
+				ProjectType:   frontMatter.ProjectType,
+				Language:      frontMatter.Language,
+				Framework:     frontMatter.Framework,
+				Tags:          frontMatter.Tags,
+				AlwaysApply:   frontMatter.AlwaysApply,
+				Documentation: frontMatter.Documentation,
+				StyleGuide:    frontMatter.StyleGuide,
+				Examples:      frontMatter.Examples,
+				Custom:        frontMatter.Custom,
 			}
 
 			// Load the clean template content (without front matter)
