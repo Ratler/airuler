@@ -569,6 +569,7 @@ defaults:
 airuler init [path]                   # Initialize project structure
 airuler compile [target]              # Compile templates
 airuler install [target] [rule]       # Install compiled rules
+airuler update-installed              # Update all tracked installations
 airuler uninstall [target] [rule]     # Uninstall tracked installations
 airuler watch                         # Watch mode for development
 airuler version                       # Show version information
