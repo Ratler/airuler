@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: MIT
+// SPDX-FileCopyrightText: Copyright (c) 2025 Stefan Wold <ratler@stderr.eu>
+
 package cmd
 
 import (
@@ -163,9 +166,9 @@ func TestInitProjectFilePermissions(t *testing.T) {
 		{"templates", 0755, true},
 		{"vendors", 0755, true},
 		{"compiled", 0755, true},
-		{"airuler.yaml", 0644, false},
-		{"airuler.lock", 0644, false},
-		{"templates/examples/example.tmpl", 0644, false},
+		{"airuler.yaml", 0600, false},
+		{"airuler.lock", 0600, false},
+		{"templates/examples/example.tmpl", 0600, false},
 	}
 
 	for _, test := range fileTests {
