@@ -65,7 +65,7 @@ install: build
 .PHONY: test
 test:
 	@echo "Running tests..."
-	AIRULER_USE_MOCK_GIT=1 $(GOTEST) -v ./...
+	AIRULER_USE_MOCK_GIT=1 $(GOTEST) -race -v ./...
 
 .PHONY: test-coverage
 test-coverage:
