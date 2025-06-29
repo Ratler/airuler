@@ -123,10 +123,13 @@ func installForTarget(target compiler.Target) (int, error) {
 
 		sourcePath := filepath.Join(compiledDir, file.Name())
 
-		// Determine mode from filename for Claude target
-		mode := "command" // default
-		if target == compiler.TargetClaude && file.Name() == "CLAUDE.md" {
-			mode = "memory"
+		// Determine mode from filename for Claude target only
+		mode := "" // default for non-Claude targets
+		if target == compiler.TargetClaude {
+			mode = "command" // default for Claude
+			if file.Name() == "CLAUDE.md" {
+				mode = "memory"
+			}
 		}
 
 		// Get target directory based on mode
@@ -158,7 +161,11 @@ func installForTarget(target compiler.Target) (int, error) {
 		// Record the installation
 		ruleName := installRule
 		if ruleName == "" {
-			ruleName = "*" // Indicates all rules were installed
+			// When installing all templates, use the actual template name from filename
+			// Remove the target-specific extension to get the base template name
+			baseName := strings.TrimSuffix(file.Name(), ".md")
+			baseName = strings.TrimSuffix(baseName, ".mdc")
+			ruleName = baseName
 		}
 		if err := recordInstallation(target, ruleName, targetPath, mode); err != nil {
 			fmt.Printf("  ⚠️  Failed to record installation: %v\n", err)
@@ -443,11 +450,21 @@ func installMemoryFile(source, target string) error {
 }
 
 func recordInstallation(target compiler.Target, rule, filePath, mode string) error {
+	// Convert project path to absolute path if it's a project installation
+	var projectPath string
+	if installProject != "" {
+		absPath, err := filepath.Abs(installProject)
+		if err != nil {
+			return fmt.Errorf("failed to get absolute path for project: %w", err)
+		}
+		projectPath = absPath
+	}
+
 	record := config.InstallationRecord{
 		Target:      string(target),
 		Rule:        rule,
 		Global:      installProject == "",
-		ProjectPath: installProject,
+		ProjectPath: projectPath,
 		Mode:        mode,
 		FilePath:    filePath,
 		InstalledAt: time.Now(),

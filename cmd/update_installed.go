@@ -99,7 +99,9 @@ func updateInstalledRules() error {
 	for _, installation := range allInstallations {
 		installType := "global"
 		if !installation.Global {
-			installType = fmt.Sprintf("project: %s", installation.ProjectPath)
+			// Show only the project name (last directory) instead of full path
+			projectName := filepath.Base(installation.ProjectPath)
+			installType = fmt.Sprintf("project: %s", projectName)
 		}
 
 		if err := updateSingleInstallation(installation); err != nil {
