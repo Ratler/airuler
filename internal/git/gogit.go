@@ -9,8 +9,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	gogit "github.com/go-git/go-git/v6"
-	"github.com/go-git/go-git/v6/plumbing"
+	gogit "github.com/go-git/go-git/v5"
+	"github.com/go-git/go-git/v5/plumbing"
 )
 
 // GoGitRepository implements Repository interface using go-git library
@@ -44,7 +44,7 @@ func (r *GoGitRepository) Clone() error {
 	}
 
 	// Clone repository using go-git
-	_, err := gogit.PlainClone(r.LocalPath, &gogit.CloneOptions{
+	_, err := gogit.PlainClone(r.LocalPath, false, &gogit.CloneOptions{
 		URL: r.URL,
 	})
 	if err != nil {
