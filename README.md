@@ -86,7 +86,7 @@ airuler init
 This creates the following structure and optionally initializes a git repository:
 ```
 rules/
-├── templates/          # Your rule templates
+├── templates/         # Your rule templates
 │   ├── partials/      # Reusable components
 │   └── examples/      # Sample templates
 ├── vendors/           # External rule repositories  
@@ -97,7 +97,7 @@ rules/
 │   ├── copilot/       # Copilot .instructions.md files
 │   └── roo/           # Roo Code .md files
 ├── airuler.yaml       # Configuration
-├── airuler.lock      # Dependency lock file
+├── airuler.lock       # Dependency lock file
 └── .gitignore         # Git ignore patterns
 ```
 
