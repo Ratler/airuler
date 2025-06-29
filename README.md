@@ -367,9 +367,12 @@ Generated for {{.Target}}
 {{end}}
 ```
 
-**Note**: 
+**Important Notes**:
 - Partials are referenced by their relative path from templates directory (e.g., `partials/header`)
-- All template variables from the main template are available in partials
+- **Always include the dot (`.`) parameter** when calling templates: `{{template "partials/header" .}}`
+  - The dot passes the current data context (variables like `.Language`, `.Target`, etc.) to the partial
+  - Without the dot, partials won't have access to template variables and conditionals will fail
+- All template variables from the main template are available in partials when the dot is included
 - Partials can have YAML front matter, but it's stripped during compilation
 
 ## Claude Code Installation Modes 🆕
