@@ -115,10 +115,14 @@ Add a template file to `templates/my-coding-rules.tmpl`:
 ```yaml
 ---
 claude_mode: memory
-description: Project coding standards for {{.ProjectType}}
+description: "Project coding standards"
 globs: "**/*"
+project_type: "web-application"
+language: "TypeScript"
 ---
 # {{.Name}} Coding Standards
+
+This document outlines coding standards for our {{.ProjectType}} project using {{.Language}}.
 
 {{if eq .Target "claude"}}
 This document outlines coding standards for this project. These rules are automatically loaded by Claude Code.
@@ -221,38 +225,100 @@ airuler install claude my-coding-rules
 
 Templates use Go's `text/template` syntax with custom functions and YAML front matter.
 
-### Template Front Matter 🆕
+### Template Front Matter
 
-Templates can include YAML front matter to specify metadata:
+Templates use YAML front matter to define metadata and variables that can be used in the template content:
 
 ```yaml
 ---
-claude_mode: memory       # For Claude Code: "command", "memory", or "both"
-description: Custom description
-globs: "**/*.ts,**/*.js"
-arguments: function_name
-project_type: typescript
-language: typescript
-framework: react
-tags: [frontend, web]
+# Core front matter fields (always available)
+description: "Project coding standards"      # → {{.Description}}
+globs: "**/*.ts,**/*.js"                    # → {{.Globs}}
+claude_mode: memory                         # → {{.Mode}} (command/memory/both)
+
+# Extended front matter fields (optional)
+project_type: "web-application"             # → {{.ProjectType}}
+language: "TypeScript"                      # → {{.Language}}
+framework: "React"                          # → {{.Framework}}
+tags:                                       # → {{.Tags}} (array)
+  - "frontend"
+  - "spa"
+  - "typescript"
+always_apply: "true"                        # → {{.AlwaysApply}}
+documentation: "docs/frontend.md"           # → {{.Documentation}}
+style_guide: "Airbnb JavaScript"            # → {{.StyleGuide}}
+examples: "examples/react/"                 # → {{.Examples}}
+custom:                                     # → {{.Custom}} (map)
+  build_tool: "Vite"                       # → {{.Custom.build_tool}}
+  testing_framework: "Jest"                 # → {{.Custom.testing_framework}}
+  version: "18.2.0"                        # → {{.Custom.version}}
 ---
 ```
 
-### Variables
-- `{{.Target}}` - Current target (cursor, claude, cline, copilot, roo)
-- `{{.Name}}` - Template name
-- `{{.Description}}` - Rule description
-- `{{.Globs}}` - File glob patterns
-- `{{.Mode}}` - Installation mode (for Claude Code)
-- `{{.ProjectType}}` - Project type (from front matter)
-- `{{.Language}}` - Programming language
-- `{{.Framework}}` - Framework being used
-- `{{.Tags}}` - Array of tags
-- `{{.AlwaysApply}}` - For Cursor compatibility
-- `{{.Documentation}}` - Additional documentation
-- `{{.StyleGuide}}` - Style guide reference
-- `{{.Examples}}` - Example content
-- `{{.Custom}}` - Map for additional custom data
+### Template Variables
+
+Variables are populated from three sources:
+
+#### 1. System Variables (Always Available)
+- `{{.Target}}` - Current compilation target (cursor, claude, cline, copilot, roo)
+- `{{.Name}}` - Template filename without extension (e.g., "my-rules" from "my-rules.tmpl")
+
+#### 2. Front Matter Variables (From YAML Header)
+Basic fields:
+- `{{.Description}}` - From `description:` field (defaults to "AI coding rules for {{.Name}}")
+- `{{.Globs}}` - From `globs:` field (defaults to "**/*")
+- `{{.Mode}}` - From `claude_mode:` field (for Claude Code only)
+
+Extended fields (all optional):
+- `{{.ProjectType}}` - From `project_type:` field
+- `{{.Language}}` - From `language:` field
+- `{{.Framework}}` - From `framework:` field
+- `{{.Tags}}` - From `tags:` field (array)
+- `{{.AlwaysApply}}` - From `always_apply:` field
+- `{{.Documentation}}` - From `documentation:` field
+- `{{.StyleGuide}}` - From `style_guide:` field
+- `{{.Examples}}` - From `examples:` field
+- `{{.Custom}}` - From `custom:` field (map for arbitrary key-value pairs)
+
+#### 3. Usage Example
+
+Template with front matter (`templates/react-standards.tmpl`):
+```yaml
+---
+description: "React TypeScript coding standards"
+globs: "**/*.{ts,tsx,js,jsx}"
+claude_mode: both
+project_type: "web-application"
+language: "TypeScript"
+framework: "React"
+tags: ["frontend", "spa", "typescript"]
+documentation: "docs/react.md"
+custom:
+  build_tool: "Vite"
+  min_node_version: "18.0.0"
+---
+
+# {{.Language}} {{.Framework}} Standards
+
+You're working on a {{.ProjectType}} using {{.Framework}}.
+
+## File Patterns
+These rules apply to: {{.Globs}}
+
+## Technology Stack
+- Language: {{.Language}}
+- Framework: {{.Framework}}
+- Build Tool: {{.Custom.build_tool}}
+- Min Node Version: {{.Custom.min_node_version}}
+
+## Tags
+{{range .Tags}}- {{.}}
+{{end}}
+
+{{if .Documentation}}
+See full documentation: {{.Documentation}}
+{{end}}
+```
 
 ### Conditionals
 ```go
@@ -277,24 +343,34 @@ Frontend-specific guidelines
 
 ### Partials and Template Inheritance
 
-Include reusable components using partials:
+Include reusable components using partials. **Important**: Partials must be placed in a `partials/` subdirectory.
 
+Main template (`templates/main.tmpl`):
 ```go
-{{template "header" .}}
+{{template "partials/header" .}}
 
 # Main content here
 
-{{template "footer" .}}
+{{template "partials/footer" .}}
 ```
 
-Create partials in `templates/partials/header.tmpl`:
+Partial file (`templates/partials/header.tmpl`):
 ```yaml
 ---
-description: Common header for all rules
+description: "Common header for all rules"
 ---
 # {{.Name}}
+{{if .ProjectType}}
 Generated for {{.Target}} on {{.ProjectType}} project
+{{else}}
+Generated for {{.Target}}
+{{end}}
 ```
+
+**Note**: 
+- Partials are referenced by their relative path from templates directory (e.g., `partials/header`)
+- All template variables from the main template are available in partials
+- Partials can have YAML front matter, but it's stripped during compilation
 
 ## Claude Code Installation Modes 🆕
 
@@ -563,11 +639,13 @@ airuler vendors exclude-all           # Exclude all vendors
 
 ```yaml
 ---
-description: Framework-specific coding standards
-project_type: "{{.ProjectType}}"
-framework: "{{.Framework}}"
+description: "Framework-specific coding standards"
+globs: "**/*.{js,ts,jsx,tsx,vue}"
+project_type: "web-application"
+framework: "react"
+language: "javascript"
 ---
-# {{title .Framework}} Coding Standards
+# {{title .Framework}} Coding Standards for {{.ProjectType}}
 
 {{if eq .Framework "react"}}
 ## React Best Practices
