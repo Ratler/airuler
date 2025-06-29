@@ -32,7 +32,7 @@ Project Structure:
 ├── compiled/          # Generated rules for each target
 │   ├── cursor/       # Cursor IDE rules
 │   ├── claude/       # Claude Code rules
-│   ├── cline/        # Cline/Roo rules
+│   ├── cline/        # Cline rules
 │   └── copilot/      # GitHub Copilot rules
 ├── airuler.yaml       # Project configuration
 ├── airuler.lock       # Vendor dependency locks
@@ -169,7 +169,7 @@ This is an airuler project for managing AI coding assistant rules and templates.
 
 ## About airuler
 
-airuler is a CLI tool that compiles AI rule templates into target-specific formats for various AI coding assistants including Cursor, Claude Code, Cline/Roo, and GitHub Copilot. It supports template inheritance, vendor management, and multi-repository workflows.
+airuler is a CLI tool that compiles AI rule templates into target-specific formats for various AI coding assistants including Cursor, Claude Code, Cline, and GitHub Copilot. It supports template inheritance, vendor management, and multi-repository workflows.
 
 For more information, documentation, and source code, visit: https://github.com/Ratler/airuler/
 
@@ -184,7 +184,7 @@ For more information, documentation, and source code, visit: https://github.com/
 ├── compiled/          # Generated rules for each target
 │   ├── cursor/       # Cursor IDE rules (.mdc files)
 │   ├── claude/       # Claude Code rules (.md files)
-│   ├── cline/        # Cline/Roo rules (.md files)
+│   ├── cline/        # Cline rules (.md files)
 │   └── copilot/      # GitHub Copilot rules (.instructions.md files)
 ├── airuler.yaml       # Project configuration
 ├── airuler.lock       # Vendor dependency locks

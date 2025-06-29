@@ -31,7 +31,7 @@ func TestRootCommand(t *testing.T) {
 		"AI rule templates",
 		"Cursor",
 		"Claude Code",
-		"Cline/Roo",
+		"Cline",
 		"GitHub Copilot",
 	}
 

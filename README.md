@@ -1,10 +1,10 @@
 # airuler - AI Rules Template Engine
 
-A Go-based CLI tool that compiles AI rule templates into target-specific formats for various AI coding assistants including Cursor, Claude Code, Cline/Roo, and GitHub Copilot.
+A Go-based CLI tool that compiles AI rule templates into target-specific formats for various AI coding assistants including Cursor, Claude Code, Cline, and GitHub Copilot.
 
 ## Features
 
-- 🎯 **Multi-target compilation**: Generate rules for Cursor, Claude Code, Cline/Roo, and GitHub Copilot
+- 🎯 **Multi-target compilation**: Generate rules for Cursor, Claude Code, Cline, and GitHub Copilot
 - 📦 **Vendor management**: Fetch and manage rule templates from Git repositories  
 - 🔄 **Template inheritance**: Support for base templates and partials
 - 💾 **Safe installation**: Automatic backup of existing rules
@@ -148,7 +148,7 @@ airuler install claude my-coding-rules
   - Memory mode: Persistent project instructions (automatically loaded)
   - Automatic content appending for memory mode
 
-### Cline/Roo
+### Cline
 - **Format**: `.md` files 
 - **Location**: `.clinerules/` (project) or `~/.clinerules/`
 - **Features**: Plain markdown rules

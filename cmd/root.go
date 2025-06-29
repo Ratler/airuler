@@ -18,7 +18,7 @@ var rootCmd = &cobra.Command{
 	Use:   "airuler",
 	Short: "AI Rules Template Engine",
 	Long: `airuler is a CLI tool that compiles AI rule templates into target-specific formats
-for various AI coding assistants including Cursor, Claude Code, Cline/Roo, and GitHub Copilot.
+for various AI coding assistants including Cursor, Claude Code, Cline, and GitHub Copilot.
 
 It supports template inheritance, vendor management, and multi-repository workflows.`,
 }
