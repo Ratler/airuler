@@ -231,7 +231,7 @@ claude_mode: memory       # For Claude Code: "command", "memory", or "both"
 description: Custom description
 globs: "**/*.ts,**/*.js"
 arguments: function_name
-projecttype: typescript
+project_type: typescript
 language: typescript
 framework: react
 tags: [frontend, web]
@@ -564,7 +564,7 @@ airuler vendors exclude-all           # Exclude all vendors
 ```yaml
 ---
 description: Framework-specific coding standards
-projecttype: "{{.ProjectType}}"
+project_type: "{{.ProjectType}}"
 framework: "{{.Framework}}"
 ---
 # {{title .Framework}} Coding Standards
@@ -628,7 +628,7 @@ Generated on: {{/* Add date functionality if needed */}}
 ---
 claude_mode: both
 description: TypeScript React development standards
-projecttype: web
+project_type: web
 language: typescript
 framework: react
 tags: [frontend, web, typescript, react]
