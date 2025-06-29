@@ -13,9 +13,29 @@ A Go-based CLI tool that compiles AI rule templates into target-specific formats
 - 🧠 **Claude Code modes**: Memory (persistent) and command (on-demand) installation modes
 - 📝 **YAML front matter**: Rich template metadata and configuration
 
-## Quick Start
+## Installation
 
-### Installation
+### Pre-built Binaries
+
+Download the latest release for your platform from the [GitHub releases page](https://github.com/ratler/airuler/releases).
+
+```bash
+# Extract and move to your PATH
+tar -xzf airuler_*_linux_amd64.tar.gz
+sudo mv airuler /usr/local/bin/
+```
+
+### Docker
+
+```bash
+# Pull the latest image
+docker pull ratler/airuler:latest
+
+# Or run directly
+docker run --rm -v $(pwd):/workspace ratler/airuler:latest version
+```
+
+### Build from Source
 
 ```bash
 # Clone and build
@@ -23,6 +43,39 @@ git clone https://github.com/ratler/airuler
 cd airuler
 go build -o airuler
 ```
+
+## Docker Usage
+
+### Basic Usage
+
+```bash
+# Run airuler commands with current directory mounted
+docker run --rm -v $(pwd):/workspace ratler/airuler:latest [command]
+
+# Initialize a new project
+docker run --rm -v $(pwd):/workspace ratler/airuler:latest init
+
+# Compile templates
+docker run --rm -v $(pwd):/workspace ratler/airuler:latest compile
+
+# Install rules to project
+docker run --rm -v $(pwd):/workspace ratler/airuler:latest install --project .
+```
+
+### Using docker-compose
+
+```bash
+# Compile templates
+docker-compose run --rm compile
+
+# Watch for changes during development
+docker-compose run --rm watch
+
+# Run any airuler command
+docker-compose run --rm airuler init
+```
+
+## Quick Start
 
 ### Initialize a new project
 
@@ -442,6 +495,7 @@ airuler compile [target]              # Compile templates
 airuler install [target] [rule]       # Install compiled rules
 airuler uninstall [target] [rule]     # Uninstall tracked installations
 airuler watch                         # Watch mode for development
+airuler version                       # Show version information
 ```
 
 ### Compilation Options

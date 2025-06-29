@@ -1,0 +1,91 @@
+---
+project_name: airuler
+
+builds:
+  - main: ./main.go
+    env:
+      - CGO_ENABLED=0
+    binary: airuler
+    flags:
+      - -trimpath
+      - -v
+    ldflags:
+      - -s -w -X main.Version={{.Version}} -X main.BuildCommit={{.Commit}} -X main.BuildDate={{.Date}}
+    goos:
+      - darwin
+      - linux
+      - freebsd
+    goarch:
+      - amd64
+      - arm64
+      - arm
+archives:
+  - format: tar.gz
+    wrap_in_directory: true
+    files:
+      - LICENSE
+      - README.md
+
+dockers:
+  - ids:
+      - airuler
+    image_templates:
+      - "ratler/airuler:{{ .Tag }}-amd64"
+    use: buildx
+    goos: linux
+    goarch: amd64
+    dockerfile: Dockerfile
+    build_flag_templates:
+      - "--pull"
+      - "--label=org.opencontainers.image.created={{.Date}}"
+      - "--label=org.opencontainers.image.name={{.ProjectName}}"
+      - "--label=org.opencontainers.image.revision={{.FullCommit}}"
+      - "--label=org.opencontainers.image.version={{.Version}}"
+      - "--label=org.opencontainers.image.source={{.GitURL}}"
+      - "--platform=linux/amd64"
+  - ids:
+      - airuler
+    image_templates:
+      - "ratler/airuler:{{ .Tag }}-arm64"
+    use: buildx
+    goos: linux
+    goarch: arm64
+    dockerfile: Dockerfile
+    build_flag_templates:
+      - "--pull"
+      - "--label=org.opencontainers.image.created={{.Date}}"
+      - "--label=org.opencontainers.image.name={{.ProjectName}}"
+      - "--label=org.opencontainers.image.revision={{.FullCommit}}"
+      - "--label=org.opencontainers.image.version={{.Version}}"
+      - "--label=org.opencontainers.image.source={{.GitURL}}"
+      - "--platform=linux/arm64"
+
+docker_manifests:
+  - name_template: "ratler/airuler:{{ .Tag }}"
+    image_templates:
+      - "ratler/airuler:{{ .Tag }}-amd64"
+      - "ratler/airuler:{{ .Tag }}-arm64"
+  - name_template: "ratler/airuler:latest"
+    image_templates:
+      - "ratler/airuler:{{ .Tag }}-amd64"
+      - "ratler/airuler:{{ .Tag }}-arm64"
+
+changelog:
+  sort: asc
+  groups:
+    - title: Features
+      regexp: '^.*?feat(\([[:word:]]+\))??!?:.+$'
+      order: 0
+    - title: "Bug fixes"
+      regexp: '^.*?fix(\([[:word:]]+\))??!?:.+$'
+      order: 1
+    - title: Others
+      order: 999
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+      - Merge pull request
+      - Merge branch
+      - go mod tidy
+        - Address lint issues

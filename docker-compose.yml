@@ -1,0 +1,28 @@
+# SPDX-License-Identifier: MIT
+# SPDX-FileCopyrightText: Copyright (c) 2025 Stefan Wold <ratler@stderr.eu>
+
+version: '3.8'
+
+services:
+  airuler:
+    build: .
+    volumes:
+      - .:/workspace
+    working_dir: /workspace
+    command: ["--help"]
+
+  # Service for compiling templates
+  compile:
+    build: .
+    volumes:
+      - .:/workspace
+    working_dir: /workspace
+    command: ["compile"]
+
+  # Service for watching templates during development
+  watch:
+    build: .
+    volumes:
+      - .:/workspace
+    working_dir: /workspace
+    command: ["watch"]
