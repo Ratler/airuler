@@ -115,17 +115,16 @@ func (c *Compiler) processCursor(content, templateName string, data template.Dat
 	// Cursor expects .mdc files with YAML front matter
 	filename := filepath.Base(templateName) + ".mdc"
 
-	// If content doesn't start with front matter, ensure it has proper structure
-	if !strings.HasPrefix(content, "---") {
-		frontMatter := fmt.Sprintf(`---
+	// Always generate front matter from parsed template data
+	// (content is always clean since front matter is stripped during loading)
+	frontMatter := fmt.Sprintf(`---
 description: %s
 globs: %s
-alwaysApply: true
+alwaysApply: %s
 ---
 
-`, getDescription(data, templateName), getGlobs(data))
-		content = frontMatter + content
-	}
+`, getDescription(data, templateName), getGlobs(data), getAlwaysApply(data))
+	content = frontMatter + content
 
 	return content, filename
 }
@@ -193,10 +192,25 @@ func getDescription(data template.Data, fallback string) string {
 }
 
 func getGlobs(data template.Data) string {
-	if data.Globs != "" {
-		return data.Globs
+	// Return the globs value as-is since the logic for defaults
+	// is now handled in the data preparation phase
+	return data.Globs
+}
+
+func getAlwaysApply(data template.Data) string {
+	if data.AlwaysApply != "" {
+		// Convert string values to boolean strings
+		switch strings.ToLower(data.AlwaysApply) {
+		case "true", "1", "yes", "on":
+			return "true"
+		case "false", "0", "no", "off":
+			return "false"
+		default:
+			// If it's not a recognized boolean value, treat as literal string
+			return data.AlwaysApply
+		}
 	}
-	return "**/*"
+	return "true" // Default to true if not specified
 }
 
 type CompiledRule struct {

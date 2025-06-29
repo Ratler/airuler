@@ -11,6 +11,11 @@ import (
 	"github.com/ratler/airuler/internal/compiler"
 )
 
+// Helper function to create string pointers for tests
+func stringPtr(s string) *string {
+	return &s
+}
+
 func TestIsValidTarget(t *testing.T) {
 	tests := []struct {
 		target   compiler.Target
@@ -342,7 +347,7 @@ Template content here`,
 			expected: &TemplateFrontMatter{
 				Description: "Test template",
 				ClaudeMode:  "memory",
-				Globs:       "**/*.go",
+				Globs:       stringPtr("**/*.go"),
 			},
 			hasError: false,
 		},
@@ -370,7 +375,7 @@ Template with extended fields`,
 			expected: &TemplateFrontMatter{
 				Description:   "Test template with extended fields",
 				ClaudeMode:    "both",
-				Globs:         "**/*.{js,ts}",
+				Globs:         stringPtr("**/*.{js,ts}"),
 				ProjectType:   "web-application",
 				Language:      "TypeScript",
 				Framework:     "React",
@@ -423,8 +428,11 @@ Just content here`,
 			if result.ClaudeMode != tt.expected.ClaudeMode {
 				t.Errorf("ClaudeMode = %q, expected %q", result.ClaudeMode, tt.expected.ClaudeMode)
 			}
-			if result.Globs != tt.expected.Globs {
-				t.Errorf("Globs = %q, expected %q", result.Globs, tt.expected.Globs)
+			// Compare Globs pointers
+			if (result.Globs == nil) != (tt.expected.Globs == nil) {
+				t.Errorf("Globs pointer mismatch: result=%v, expected=%v", result.Globs == nil, tt.expected.Globs == nil)
+			} else if result.Globs != nil && tt.expected.Globs != nil && *result.Globs != *tt.expected.Globs {
+				t.Errorf("Globs = %q, expected %q", *result.Globs, *tt.expected.Globs)
 			}
 
 			// Compare extended fields

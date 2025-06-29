@@ -365,11 +365,11 @@ func TestHelperFunctions(t *testing.T) {
 			expected: "*.ts,*.js",
 		},
 		{
-			name:     "getGlobs with default",
+			name:     "getGlobs with empty data",
 			function: func(data template.Data, _ string) string { return getGlobs(data) },
 			data:     template.Data{},
 			fallback: "",
-			expected: "**/*",
+			expected: "",
 		},
 	}
 

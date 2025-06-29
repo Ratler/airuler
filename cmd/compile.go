@@ -25,9 +25,9 @@ var (
 )
 
 type TemplateFrontMatter struct {
-	ClaudeMode  string `yaml:"claude_mode"`
-	Description string `yaml:"description"`
-	Globs       string `yaml:"globs"`
+	ClaudeMode  string  `yaml:"claude_mode"`
+	Description string  `yaml:"description"`
+	Globs       *string `yaml:"globs"` // Use pointer to detect if field was set
 
 	// Extended fields for advanced templates
 	ProjectType   string                 `yaml:"project_type"`
@@ -197,7 +197,7 @@ func compileTemplates(targets []compiler.Target) error {
 					frontMatter.Description,
 					fmt.Sprintf("AI coding rules for %s", templateName),
 				),
-				Globs: getValueOrDefault(frontMatter.Globs, "**/*"),
+				Globs: getGlobsValue(frontMatter.Globs),
 				Mode:  frontMatter.ClaudeMode,
 
 				// Extended fields from template front matter
@@ -439,6 +439,13 @@ func getValueOrDefault(value, defaultValue string) string {
 		return defaultValue
 	}
 	return value
+}
+
+func getGlobsValue(globs *string) string {
+	if globs == nil {
+		return "**/*"
+	}
+	return *globs
 }
 
 func stripTemplateFrontMatter(content string) string {
