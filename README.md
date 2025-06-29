@@ -155,9 +155,9 @@ airuler install claude my-coding-rules
 - **Features**: Plain markdown rules
 
 ### GitHub Copilot
-- **Format**: `.instructions.md` files with optional YAML front matter
-- **Location**: `.github/instructions/` (project) or `~/.github/instructions/`
-- **Features**: Supports `description`, `applyTo` globs
+- **Format**: Combined into single `.github/copilot-instructions.md` file
+- **Location**: `.github/` (project only - no global installation)
+- **Features**: Plain markdown compilation, project-only installation
 
 ### Roo Code
 - **Format**: Plain `.md` files
@@ -190,12 +190,16 @@ tags: [frontend, web]
 - `{{.Name}}` - Template name
 - `{{.Description}}` - Rule description
 - `{{.Globs}}` - File glob patterns
-- `{{.Arguments}}` - Arguments placeholder
 - `{{.Mode}}` - Installation mode (for Claude Code)
 - `{{.ProjectType}}` - Project type (from front matter)
 - `{{.Language}}` - Programming language
 - `{{.Framework}}` - Framework being used
 - `{{.Tags}}` - Array of tags
+- `{{.AlwaysApply}}` - For Cursor compatibility
+- `{{.Documentation}}` - Additional documentation
+- `{{.StyleGuide}}` - Style guide reference
+- `{{.Examples}}` - Example content
+- `{{.Custom}}` - Map for additional custom data
 
 ### Conditionals
 ```go
@@ -422,37 +426,21 @@ airuler config edit
 ### airuler.yaml Configuration
 
 ```yaml
-# Vendor repositories
-vendors:
-  - url: https://github.com/company/frontend-rules
-    alias: frontend
-    enabled: true
-    auto_update: true
-  - url: https://github.com/company/security-rules
-    alias: security
-    enabled: true
-    auto_update: false
-
 # Default settings
 defaults:
-  include_vendors: [frontend, security]
-  modes:
-    claude: command  # Default mode for Claude Code
-
-# Update settings
-update:
-  auto_recompile: true
-  check_frequency: daily
-  confirm_updates: false
+  include_vendors: ["*"]  # Include all vendors by default
+  # Or specify specific vendors:
+  # include_vendors: [frontend, security]
 ```
 
 ## Commands Reference
 
 ### Core Commands
 ```bash
-airuler init                          # Initialize project structure
+airuler init [path]                   # Initialize project structure
 airuler compile [target]              # Compile templates
 airuler install [target] [rule]       # Install compiled rules
+airuler uninstall [target] [rule]     # Uninstall tracked installations
 airuler watch                         # Watch mode for development
 ```
 
@@ -474,6 +462,15 @@ airuler install claude my-rule        # Install specific Claude rule
 airuler install --force               # Overwrite without backup
 ```
 
+### Uninstallation Options
+```bash
+airuler uninstall                     # Uninstall all tracked installations
+airuler uninstall --project ./app     # Uninstall from project directory
+airuler uninstall claude              # Uninstall Claude rules only
+airuler uninstall claude my-rule      # Uninstall specific Claude rule
+airuler uninstall --force             # Skip confirmation prompts
+```
+
 ### Configuration Commands
 ```bash
 airuler config init                   # Initialize global configuration
@@ -488,9 +485,15 @@ airuler fetch <url> --as <alias>      # Fetch with custom alias
 airuler fetch <url> --update          # Update existing vendor
 airuler update [vendor...]            # Update vendors
 airuler update --dry-run              # Check for updates only
+airuler update --interactive          # Interactive update mode
 airuler vendors list                  # List vendors
 airuler vendors status                # Show vendor status
+airuler vendors check                 # Check for vendor updates
 airuler vendors remove <vendor>       # Remove vendor
+airuler vendors include <vendor>      # Include vendor in compilation
+airuler vendors exclude <vendor>      # Exclude vendor from compilation
+airuler vendors include-all           # Include all vendors
+airuler vendors exclude-all           # Exclude all vendors
 ```
 
 ### Global Options
