@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"github.com/ratler/airuler/internal/compiler"
@@ -281,13 +282,7 @@ func loadTemplatesFromDirs(dirs []string) (map[string]TemplateSource, map[string
 
 			// Check if this is a partial (in partials/ directory)
 			pathParts := strings.Split(filepath.ToSlash(relPath), "/")
-			isPartial := false
-			for _, part := range pathParts {
-				if part == "partials" {
-					isPartial = true
-					break
-				}
-			}
+			isPartial := slices.Contains(pathParts, "partials")
 
 			if isPartial {
 				partials[name] = string(content)
@@ -365,12 +360,7 @@ func loadTemplatesFromDirs(dirs []string) (map[string]TemplateSource, map[string
 }
 
 func isValidTarget(target compiler.Target) bool {
-	for _, t := range compiler.AllTargets {
-		if t == target {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(compiler.AllTargets, target)
 }
 
 func getTargetNames() []string {
@@ -475,13 +465,7 @@ func getVendorTemplateDirs() []string {
 	}
 
 	// Check if "*" is in include_vendors (include all)
-	includeAll := false
-	for _, include := range includeVendors {
-		if include == "*" {
-			includeAll = true
-			break
-		}
-	}
+	includeAll := slices.Contains(includeVendors, "*")
 
 	if includeAll {
 		// Include all vendors
