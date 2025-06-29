@@ -232,7 +232,7 @@ Templates use YAML front matter to define metadata and variables that can be use
 ```yaml
 ---
 # Core front matter fields (always available)
-description: "Project coding standards"      # → {{.Description}}
+description: "Project coding standards"     # → {{.Description}}
 globs: "**/*.ts,**/*.js"                    # → {{.Globs}}
 claude_mode: memory                         # → {{.Mode}} (command/memory/both)
 
@@ -249,9 +249,9 @@ documentation: "docs/frontend.md"           # → {{.Documentation}}
 style_guide: "Airbnb JavaScript"            # → {{.StyleGuide}}
 examples: "examples/react/"                 # → {{.Examples}}
 custom:                                     # → {{.Custom}} (map)
-  build_tool: "Vite"                       # → {{.Custom.build_tool}}
+  build_tool: "Vite"                        # → {{.Custom.build_tool}}
   testing_framework: "Jest"                 # → {{.Custom.testing_framework}}
-  version: "18.2.0"                        # → {{.Custom.version}}
+  version: "18.2.0"                         # → {{.Custom.version}}
 ---
 ```
 
