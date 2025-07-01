@@ -212,14 +212,14 @@ func (m *InteractiveModel) adjustViewportScrolling() {
 	// Add a small buffer to prevent oscillation at edges
 	visibleTop := currentOffset
 	visibleBottom := currentOffset + viewportHeight - 1
-	
+
 	// Add buffer for top edge to prevent cursor from disappearing behind group headers
 	if cursorLine < visibleTop || (cursorLine == visibleTop && currentOffset > 0) {
 		// Cursor is above visible area - scroll up to show it
 		// Find the group start to ensure we show the group header
 		groupStart := m.findGroupStart(m.Cursor)
 		groupStartLine := m.calculateItemLine(groupStart)
-		
+
 		// Use the group start line as the offset to show both header and cursor
 		newOffset := groupStartLine
 		if newOffset < 0 {

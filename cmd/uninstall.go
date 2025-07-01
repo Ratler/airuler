@@ -457,6 +457,12 @@ func performUninstallation(installations []config.InstallationRecord) error {
 }
 
 func uninstallSingle(installation config.InstallationRecord, tracker *config.InstallationTracker) error {
+	// Special handling for copilot target
+	if installation.Target == "copilot" {
+		return uninstallCopilotRule(installation, tracker)
+	}
+
+	// Standard handling for other targets
 	// Remove the actual file
 	if _, err := os.Stat(installation.FilePath); err == nil {
 		if err := os.Remove(installation.FilePath); err != nil {
@@ -475,6 +481,123 @@ func uninstallSingle(installation config.InstallationRecord, tracker *config.Ins
 		installation.ProjectPath,
 		installation.Mode,
 	)
+
+	return nil
+}
+
+// uninstallCopilotRule handles the special case of uninstalling copilot rules
+// Since copilot rules are merged into a single file, we use a reinstall strategy:
+// 1. Remove the rule from tracking
+// 2. Get all remaining copilot rules for this project
+// 3. Delete the current combined file
+// 4. Reinstall all remaining rules (if any)
+func uninstallCopilotRule(installation config.InstallationRecord, tracker *config.InstallationTracker) error {
+	// First, remove this rule from tracking
+	tracker.RemoveInstallation(
+		installation.Target,
+		installation.Rule,
+		installation.Global,
+		installation.ProjectPath,
+		installation.Mode,
+	)
+
+	// Get all remaining copilot rules for this project/scope
+	remainingRules := tracker.GetInstallations("copilot", "")
+	var remainingForThisScope []config.InstallationRecord
+
+	// Filter to only rules that match this installation's scope (global vs project)
+	for _, rule := range remainingRules {
+		if rule.Global == installation.Global && rule.ProjectPath == installation.ProjectPath {
+			remainingForThisScope = append(remainingForThisScope, rule)
+		}
+	}
+
+	// Delete the current combined file if it exists
+	if _, err := os.Stat(installation.FilePath); err == nil {
+		if err := os.Remove(installation.FilePath); err != nil {
+			return fmt.Errorf("failed to remove copilot file %s: %w", installation.FilePath, err)
+		}
+	}
+
+	// If there are remaining rules, reinstall them
+	if len(remainingForThisScope) > 0 {
+		return reinstallCopilotRules(remainingForThisScope, installation.ProjectPath)
+	}
+
+	return nil
+}
+
+// reinstallCopilotRules recreates the copilot-instructions.md file with only the specified rules
+func reinstallCopilotRules(rules []config.InstallationRecord, projectPath string) error {
+	if len(rules) == 0 {
+		return nil
+	}
+
+	// Copilot only supports project installation
+	if projectPath == "" {
+		return fmt.Errorf("copilot rules require project path")
+	}
+
+	// Get absolute project path
+	absPath, err := filepath.Abs(projectPath)
+	if err != nil {
+		return fmt.Errorf("failed to resolve project path: %w", err)
+	}
+
+	targetDir := filepath.Join(absPath, ".github")
+	targetPath := filepath.Join(targetDir, "copilot-instructions.md")
+
+	// Ensure .github directory exists
+	if err := os.MkdirAll(targetDir, 0755); err != nil {
+		return fmt.Errorf("failed to create .github directory: %w", err)
+	}
+
+	// Collect content for each remaining rule
+	var ruleContents []string
+	var ruleNames []string
+
+	for _, rule := range rules {
+		// Find the compiled source file for this rule
+		compiledDir := filepath.Join("compiled", "copilot")
+		sourcePath := filepath.Join(compiledDir, rule.Rule+".copilot-instructions.md")
+
+		// Read the source content
+		content, err := os.ReadFile(sourcePath)
+		if err != nil {
+			// If we can't find the source file, skip this rule but don't fail
+			// This handles cases where the compiled files may have been cleaned up
+			continue
+		}
+
+		ruleContents = append(ruleContents, strings.TrimSpace(string(content)))
+		ruleNames = append(ruleNames, rule.Rule)
+	}
+
+	if len(ruleContents) == 0 {
+		// No content found to reinstall, just leave the file deleted
+		return nil
+	}
+
+	// Combine all rules into single content (same logic as installCopilotRules)
+	var combinedContent strings.Builder
+	combinedContent.WriteString("# AI Coding Instructions\n\n")
+	combinedContent.WriteString("This file contains custom instructions for GitHub Copilot.\n\n")
+
+	for i, content := range ruleContents {
+		if i > 0 {
+			combinedContent.WriteString("\n---\n\n")
+		}
+		if len(ruleNames) > 1 {
+			combinedContent.WriteString(fmt.Sprintf("## %s\n\n", ruleNames[i]))
+		}
+		combinedContent.WriteString(content)
+		combinedContent.WriteString("\n")
+	}
+
+	// Write the combined content
+	if err := os.WriteFile(targetPath, []byte(combinedContent.String()), 0600); err != nil {
+		return fmt.Errorf("failed to write reinstalled copilot instructions: %w", err)
+	}
 
 	return nil
 }

@@ -201,10 +201,19 @@ func installCopilotRules(compiledDir string, files []os.DirEntry) (int, error) {
 		return 0, fmt.Errorf("copilot rules can only be installed to projects (use --project flag). Global copilot installation is not supported")
 	}
 
-	var ruleContents []string
-	var ruleNames []string
+	// Get project directory
+	absPath, err := filepath.Abs(installProject)
+	if err != nil {
+		return 0, fmt.Errorf("failed to resolve project path: %w", err)
+	}
 
-	// Collect all copilot rule files
+	targetDir := filepath.Join(absPath, ".github")
+	targetPath := filepath.Join(targetDir, "copilot-instructions.md")
+
+	// Collect new rules being installed
+	var newRuleContents []string
+	var newRuleNames []string
+
 	for _, file := range files {
 		if file.IsDir() {
 			continue
@@ -223,46 +232,69 @@ func installCopilotRules(compiledDir string, files []os.DirEntry) (int, error) {
 				continue
 			}
 
-			ruleContents = append(ruleContents, strings.TrimSpace(string(content)))
-			ruleNames = append(ruleNames, strings.TrimSuffix(file.Name(), ".copilot-instructions.md"))
+			newRuleContents = append(newRuleContents, strings.TrimSpace(string(content)))
+			newRuleNames = append(newRuleNames, strings.TrimSuffix(file.Name(), ".copilot-instructions.md"))
 		}
 	}
 
-	if len(ruleContents) == 0 {
+	if len(newRuleContents) == 0 {
 		return 0, nil
 	}
 
-	// Get project directory
-	absPath, err := filepath.Abs(installProject)
+	// Get existing rules from installation tracker
+	tracker, err := config.LoadGlobalInstallationTracker()
 	if err != nil {
-		return 0, fmt.Errorf("failed to resolve project path: %w", err)
+		return 0, fmt.Errorf("failed to load installation tracker: %w", err)
 	}
 
-	targetDir := filepath.Join(absPath, ".github")
-	targetPath := filepath.Join(targetDir, "copilot-instructions.md")
+	existingInstalls := tracker.GetInstallations("copilot", "")
+	var existingRuleNames []string
+
+	// Filter to only rules for this project
+	for _, install := range existingInstalls {
+		if !install.Global && install.ProjectPath == absPath {
+			existingRuleNames = append(existingRuleNames, install.Rule)
+		}
+	}
+
+	// Combine existing and new rules, avoiding duplicates
+	allRuleNames := make([]string, 0, len(existingRuleNames)+len(newRuleNames))
+	allRuleContents := make([]string, 0, len(existingRuleNames)+len(newRuleNames))
+	ruleSet := make(map[string]bool)
+
+	// Add existing rules first
+	for _, ruleName := range existingRuleNames {
+		if !ruleSet[ruleName] {
+			// Try to read content from compiled directory
+			sourcePath := filepath.Join(compiledDir, ruleName+".copilot-instructions.md")
+			content, err := os.ReadFile(sourcePath)
+			if err != nil {
+				// If we can't find the compiled file, skip this rule
+				// This handles cases where the rule was installed but compiled files were cleaned
+				continue
+			}
+
+			allRuleNames = append(allRuleNames, ruleName)
+			allRuleContents = append(allRuleContents, strings.TrimSpace(string(content)))
+			ruleSet[ruleName] = true
+		}
+	}
+
+	// Add new rules, skipping duplicates
+	for i, ruleName := range newRuleNames {
+		if !ruleSet[ruleName] {
+			allRuleNames = append(allRuleNames, ruleName)
+			allRuleContents = append(allRuleContents, newRuleContents[i])
+			ruleSet[ruleName] = true
+		}
+	}
 
 	// Ensure .github directory exists
 	if err := os.MkdirAll(targetDir, 0755); err != nil {
 		return 0, fmt.Errorf("failed to create .github directory: %w", err)
 	}
 
-	// Combine all rules into single content
-	var combinedContent strings.Builder
-	combinedContent.WriteString("# AI Coding Instructions\n\n")
-	combinedContent.WriteString("This file contains custom instructions for GitHub Copilot.\n\n")
-
-	for i, content := range ruleContents {
-		if i > 0 {
-			combinedContent.WriteString("\n---\n\n")
-		}
-		if len(ruleNames) > 1 {
-			combinedContent.WriteString(fmt.Sprintf("## %s\n\n", ruleNames[i]))
-		}
-		combinedContent.WriteString(content)
-		combinedContent.WriteString("\n")
-	}
-
-	// Handle existing file
+	// Handle existing file backup
 	if _, err := os.Stat(targetPath); err == nil && !installForce {
 		// Create backup
 		backupPath := targetPath + ".backup." + time.Now().Format("20060102-150405")
@@ -272,21 +304,74 @@ func installCopilotRules(compiledDir string, files []os.DirEntry) (int, error) {
 		fmt.Printf("    📋 Backed up existing file to %s\n", filepath.Base(backupPath))
 	}
 
+	// Combine all rules into single content
+	var combinedContent strings.Builder
+	combinedContent.WriteString("# AI Coding Instructions\n\n")
+	combinedContent.WriteString("This file contains custom instructions for GitHub Copilot.\n\n")
+
+	for i, content := range allRuleContents {
+		if i > 0 {
+			combinedContent.WriteString("\n---\n\n")
+		}
+		if len(allRuleContents) > 1 {
+			combinedContent.WriteString(fmt.Sprintf("## %s\n\n", allRuleNames[i]))
+		}
+		combinedContent.WriteString(content)
+		combinedContent.WriteString("\n")
+	}
+
 	// Write combined content
 	if err := os.WriteFile(targetPath, []byte(combinedContent.String()), 0600); err != nil {
 		return 0, fmt.Errorf("failed to write copilot instructions: %w", err)
 	}
 
-	// Record installation
-	ruleName := installRule
-	if ruleName == "" {
-		ruleName = "*"
-	}
-	if err := recordInstallation(compiler.TargetCopilot, ruleName, targetPath, ""); err != nil {
-		fmt.Printf("  ⚠️  Failed to record installation: %v\n", err)
+	// Record installation for each NEW template that was added
+	var newlyInstalledCount int
+	if installRule != "" {
+		// If specific rule was requested, check if it's actually new
+		wasExisting := false
+		for _, existingName := range existingRuleNames {
+			if existingName == installRule {
+				wasExisting = true
+				break
+			}
+		}
+
+		if !wasExisting {
+			if err := recordInstallation(compiler.TargetCopilot, installRule, targetPath, ""); err != nil {
+				fmt.Printf("  ⚠️  Failed to record installation: %v\n", err)
+			} else {
+				newlyInstalledCount = 1
+			}
+		}
+	} else {
+		// Record each new template that was added
+		for _, ruleName := range newRuleNames {
+			// Only record if this rule wasn't already installed
+			wasExisting := false
+			for _, existingName := range existingRuleNames {
+				if existingName == ruleName {
+					wasExisting = true
+					break
+				}
+			}
+
+			if !wasExisting {
+				if err := recordInstallation(compiler.TargetCopilot, ruleName, targetPath, ""); err != nil {
+					fmt.Printf("  ⚠️  Failed to record installation: %v\n", err)
+				} else {
+					newlyInstalledCount++
+				}
+			}
+		}
 	}
 
-	fmt.Printf("  ✅ Combined %d rules -> %s\n", len(ruleContents), targetDir)
+	if newlyInstalledCount > 0 {
+		fmt.Printf("  ✅ Combined %d new + %d existing rules -> %s\n", newlyInstalledCount, len(existingRuleNames), targetDir)
+	} else {
+		fmt.Printf("  ✅ No new rules to install (all %d rules already present) -> %s\n", len(allRuleNames), targetDir)
+	}
+
 	return 1, nil
 }
 
