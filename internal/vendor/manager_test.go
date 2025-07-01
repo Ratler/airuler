@@ -4,6 +4,7 @@
 package vendor
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -290,6 +291,285 @@ func TestManager_updateVendor(t *testing.T) {
 		expectedMsg := "vendor directory does not exist"
 		if !strings.Contains(err.Error(), expectedMsg) {
 			t.Errorf("Expected error to contain %q, got %q", expectedMsg, err.Error())
+		}
+	})
+}
+
+func TestManager_Fetch(t *testing.T) {
+	tempDir := t.TempDir()
+	originalDir, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("Failed to get current directory: %v", err)
+	}
+	defer os.Chdir(originalDir)
+
+	if err := os.Chdir(tempDir); err != nil {
+		t.Fatalf("Failed to change to temp directory: %v", err)
+	}
+
+	cfg := config.NewDefaultConfig()
+	mockFactory := git.NewMockGitRepositoryFactory()
+	manager := NewManagerWithGitFactory(cfg, mockFactory)
+
+	t.Run("fetch new vendor", func(t *testing.T) {
+		testURL := "https://github.com/user/repo"
+
+		err := manager.Fetch(testURL, "", false)
+		if err != nil {
+			t.Errorf("Fetch() failed: %v", err)
+		}
+
+		// Verify vendor added to lock file
+		dirName := git.URLToDirectoryName(testURL)
+		if _, exists := manager.lockFile.Vendors[dirName]; !exists {
+			t.Error("Vendor should be added to lock file")
+		}
+
+		// Verify lock file entry
+		vendorLock := manager.lockFile.Vendors[dirName]
+		if vendorLock.URL != testURL {
+			t.Errorf("Vendor URL = %q, want %q", vendorLock.URL, testURL)
+		}
+		if vendorLock.Commit == "" {
+			t.Error("Vendor commit should not be empty")
+		}
+		if vendorLock.FetchedAt.IsZero() {
+			t.Error("Vendor FetchedAt should be set")
+		}
+	})
+
+	t.Run("fetch vendor with alias", func(t *testing.T) {
+		testURL := "https://github.com/user/another-repo"
+		alias := "custom-alias"
+
+		err := manager.Fetch(testURL, alias, false)
+		if err != nil {
+			t.Errorf("Fetch() with alias failed: %v", err)
+		}
+
+		// Verify vendor added with alias as key
+		if _, exists := manager.lockFile.Vendors[alias]; !exists {
+			t.Error("Vendor should be added to lock file with alias")
+		}
+	})
+
+	t.Run("fetch existing vendor without update flag", func(t *testing.T) {
+		testURL := "https://github.com/user/existing-repo"
+		dirName := git.URLToDirectoryName(testURL)
+
+		// Set up mock to say repo exists
+		mockRepo := &git.MockRepository{
+			URL:         testURL,
+			LocalPath:   filepath.Join("vendors", dirName),
+			ShouldExist: true,
+		}
+		mockFactory.Repositories[fmt.Sprintf("%s:%s", testURL, filepath.Join("vendors", dirName))] = mockRepo
+
+		err := manager.Fetch(testURL, "", false)
+		if err == nil {
+			t.Error("Expected error when fetching existing vendor without update flag")
+		}
+		if !strings.Contains(err.Error(), "vendor already exists") {
+			t.Errorf("Expected 'vendor already exists' error, got: %v", err)
+		}
+	})
+
+	t.Run("update existing vendor", func(t *testing.T) {
+		testURL := "https://github.com/user/update-repo"
+		dirName := git.URLToDirectoryName(testURL)
+
+		// Set up mock to say repo exists and can be updated
+		mockRepo := &git.MockRepository{
+			URL:               testURL,
+			LocalPath:         filepath.Join("vendors", dirName),
+			ShouldExist:       true,
+			MockCurrentCommit: "updated123",
+		}
+		mockFactory.Repositories[fmt.Sprintf("%s:%s", testURL, filepath.Join("vendors", dirName))] = mockRepo
+
+		err := manager.Fetch(testURL, "", true)
+		if err != nil {
+			t.Errorf("Fetch() with update failed: %v", err)
+		}
+
+		if !mockRepo.PullCalled {
+			t.Error("Pull should be called when updating existing vendor")
+		}
+	})
+
+	t.Run("fetch fails on clone error", func(t *testing.T) {
+		testURL := "https://github.com/user/fail-repo"
+		dirName := git.URLToDirectoryName(testURL)
+
+		// Set up mock to fail on clone
+		mockRepo := &git.MockRepository{
+			URL:             testURL,
+			LocalPath:       filepath.Join("vendors", dirName),
+			ShouldExist:     false,
+			ShouldFailClone: true,
+		}
+		mockFactory.Repositories[fmt.Sprintf("%s:%s", testURL, filepath.Join("vendors", dirName))] = mockRepo
+
+		err := manager.Fetch(testURL, "", false)
+		if err == nil {
+			t.Error("Expected error when clone fails")
+		}
+		if !strings.Contains(err.Error(), "failed to clone vendor") {
+			t.Errorf("Expected 'failed to clone vendor' error, got: %v", err)
+		}
+	})
+}
+
+func TestManager_Update(t *testing.T) {
+	tempDir := t.TempDir()
+	originalDir, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("Failed to get current directory: %v", err)
+	}
+	defer os.Chdir(originalDir)
+
+	if err := os.Chdir(tempDir); err != nil {
+		t.Fatalf("Failed to change to temp directory: %v", err)
+	}
+
+	cfg := config.NewDefaultConfig()
+	mockFactory := git.NewMockGitRepositoryFactory()
+	manager := NewManagerWithGitFactory(cfg, mockFactory)
+
+	// Set up test vendors in lock file
+	manager.lockFile.Vendors["vendor1"] = config.VendorLock{
+		URL:       "https://github.com/user/repo1",
+		Commit:    "old123",
+		FetchedAt: time.Now().Add(-time.Hour),
+	}
+	manager.lockFile.Vendors["vendor2"] = config.VendorLock{
+		URL:       "https://github.com/user/repo2",
+		Commit:    "old456",
+		FetchedAt: time.Now().Add(-time.Hour),
+	}
+
+	t.Run("update all vendors", func(t *testing.T) {
+		// Set up mocks for both vendors
+		for vendor, lock := range manager.lockFile.Vendors {
+			mockRepo := &git.MockRepository{
+				URL:               lock.URL,
+				LocalPath:         filepath.Join("vendors", vendor),
+				ShouldExist:       true,
+				MockCurrentCommit: "new" + lock.Commit,
+			}
+			mockFactory.Repositories[fmt.Sprintf("%s:%s", lock.URL, filepath.Join("vendors", vendor))] = mockRepo
+		}
+
+		err := manager.Update([]string{})
+		if err != nil {
+			t.Errorf("Update() all vendors failed: %v", err)
+		}
+
+		// Verify lock file was saved (commits should be updated)
+		for vendor, lock := range manager.lockFile.Vendors {
+			if !strings.HasPrefix(lock.Commit, "new") {
+				t.Errorf("Vendor %s commit should be updated, got: %s", vendor, lock.Commit)
+			}
+		}
+	})
+
+	t.Run("update specific vendors", func(t *testing.T) {
+		// Reset commits
+		manager.lockFile.Vendors["vendor1"] = config.VendorLock{
+			URL:       "https://github.com/user/repo1",
+			Commit:    "reset123",
+			FetchedAt: time.Now().Add(-time.Hour),
+		}
+
+		mockRepo := &git.MockRepository{
+			URL:               "https://github.com/user/repo1",
+			LocalPath:         filepath.Join("vendors", "vendor1"),
+			ShouldExist:       true,
+			MockCurrentCommit: "specific123",
+		}
+		mockFactory.Repositories[fmt.Sprintf("%s:%s", "https://github.com/user/repo1", filepath.Join("vendors", "vendor1"))] = mockRepo
+
+		err := manager.Update([]string{"vendor1"})
+		if err != nil {
+			t.Errorf("Update() specific vendor failed: %v", err)
+		}
+
+		// Verify only vendor1 was updated
+		if !strings.Contains(manager.lockFile.Vendors["vendor1"].Commit, "specific") {
+			t.Error("vendor1 should be updated")
+		}
+	})
+
+	t.Run("update non-existent vendor", func(t *testing.T) {
+		err := manager.Update([]string{"nonexistent"})
+		if err == nil {
+			t.Error("Expected error when updating non-existent vendor")
+		}
+		if !strings.Contains(err.Error(), "not found in lock file") {
+			t.Errorf("Expected 'not found in lock file' error, got: %v", err)
+		}
+	})
+}
+
+func TestManager_Status(t *testing.T) {
+	cfg := config.NewDefaultConfig()
+	mockFactory := git.NewMockGitRepositoryFactory()
+	manager := NewManagerWithGitFactory(cfg, mockFactory)
+
+	t.Run("no vendors", func(t *testing.T) {
+		err := manager.Status()
+		if err != nil {
+			t.Errorf("Status() with no vendors failed: %v", err)
+		}
+	})
+
+	t.Run("vendors with different statuses", func(t *testing.T) {
+		// Set up test vendors
+		manager.lockFile.Vendors["missing-vendor"] = config.VendorLock{
+			URL:    "https://github.com/user/missing",
+			Commit: "abc123",
+		}
+		manager.lockFile.Vendors["uptodate-vendor"] = config.VendorLock{
+			URL:    "https://github.com/user/uptodate",
+			Commit: "def456",
+		}
+		manager.lockFile.Vendors["update-available"] = config.VendorLock{
+			URL:    "https://github.com/user/outdated",
+			Commit: "ghi789",
+		}
+
+		// Set up mocks
+		// missing-vendor: doesn't exist
+		missingRepo := &git.MockRepository{
+			URL:         "https://github.com/user/missing",
+			LocalPath:   filepath.Join("vendors", "missing-vendor"),
+			ShouldExist: false,
+		}
+		mockFactory.Repositories[fmt.Sprintf("%s:%s", "https://github.com/user/missing", filepath.Join("vendors", "missing-vendor"))] = missingRepo
+
+		// uptodate-vendor: exists and up to date
+		uptodateRepo := &git.MockRepository{
+			URL:               "https://github.com/user/uptodate",
+			LocalPath:         filepath.Join("vendors", "uptodate-vendor"),
+			ShouldExist:       true,
+			MockCurrentCommit: "def456",
+			MockRemoteCommit:  "def456",
+		}
+		mockFactory.Repositories[fmt.Sprintf("%s:%s", "https://github.com/user/uptodate", filepath.Join("vendors", "uptodate-vendor"))] = uptodateRepo
+
+		// update-available: exists but has updates
+		outdatedRepo := &git.MockRepository{
+			URL:               "https://github.com/user/outdated",
+			LocalPath:         filepath.Join("vendors", "update-available"),
+			ShouldExist:       true,
+			MockCurrentCommit: "ghi789",
+			MockRemoteCommit:  "newer123",
+		}
+		mockFactory.Repositories[fmt.Sprintf("%s:%s", "https://github.com/user/outdated", filepath.Join("vendors", "update-available"))] = outdatedRepo
+
+		err := manager.Status()
+		if err != nil {
+			t.Errorf("Status() failed: %v", err)
 		}
 	})
 }

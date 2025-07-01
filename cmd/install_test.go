@@ -363,3 +363,370 @@ func TestInstallFileWithForce(t *testing.T) {
 		t.Errorf("Expected no backup files with force flag, found %d", backupCount)
 	}
 }
+
+func TestInstallForTarget(t *testing.T) {
+	tempDir := t.TempDir()
+	originalDir, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("Failed to get current directory: %v", err)
+	}
+	defer os.Chdir(originalDir)
+
+	if err := os.Chdir(tempDir); err != nil {
+		t.Fatalf("Failed to change to temp directory: %v", err)
+	}
+
+	// Save original global variables
+	originalTarget := installTarget
+	originalRule := installRule
+	originalProject := installProject
+	defer func() {
+		installTarget = originalTarget
+		installRule = originalRule
+		installProject = originalProject
+	}()
+
+	t.Run("no compiled directory", func(t *testing.T) {
+		count, err := installForTarget(compiler.TargetCursor)
+		if err == nil {
+			t.Error("Expected error when compiled directory doesn't exist")
+		}
+		if count != 0 {
+			t.Errorf("Expected count 0, got %d", count)
+		}
+		if !strings.Contains(err.Error(), "no compiled rules found") {
+			t.Errorf("Expected 'no compiled rules found' error, got: %v", err)
+		}
+	})
+
+	t.Run("install cursor rules", func(t *testing.T) {
+		// Create compiled directory and files
+		compiledDir := filepath.Join("compiled", "cursor")
+		err := os.MkdirAll(compiledDir, 0755)
+		if err != nil {
+			t.Fatalf("Failed to create compiled directory: %v", err)
+		}
+
+		// Create sample rule files
+		ruleContent := "# Test Rule\nThis is a test rule."
+		ruleFiles := []string{"test-rule.mdc", "another-rule.mdc"}
+		for _, fileName := range ruleFiles {
+			err := os.WriteFile(filepath.Join(compiledDir, fileName), []byte(ruleContent), 0644)
+			if err != nil {
+				t.Fatalf("Failed to create rule file %s: %v", fileName, err)
+			}
+		}
+
+		// Set global install directory (we can't test global install easily, so use project)
+		installProject = tempDir
+
+		count, err := installForTarget(compiler.TargetCursor)
+		if err != nil {
+			t.Errorf("installForTarget() failed: %v", err)
+		}
+		if count != 2 {
+			t.Errorf("Expected count 2, got %d", count)
+		}
+
+		// Verify files were installed
+		targetDir := filepath.Join(tempDir, ".cursor", "rules")
+		for _, fileName := range ruleFiles {
+			targetPath := filepath.Join(targetDir, fileName)
+			if _, err := os.Stat(targetPath); os.IsNotExist(err) {
+				t.Errorf("Rule file %s was not installed", fileName)
+			}
+		}
+	})
+
+	t.Run("install with rule filter", func(t *testing.T) {
+		// Clean up previous test
+		err := os.RemoveAll(filepath.Join(tempDir, ".cursor"))
+		if err != nil {
+			t.Fatalf("Failed to clean up: %v", err)
+		}
+
+		installRule = "test-rule"
+		installProject = tempDir
+
+		count, err := installForTarget(compiler.TargetCursor)
+		if err != nil {
+			t.Errorf("installForTarget() with filter failed: %v", err)
+		}
+		if count != 1 {
+			t.Errorf("Expected count 1 with filter, got %d", count)
+		}
+
+		// Verify only filtered file was installed
+		targetDir := filepath.Join(tempDir, ".cursor", "rules")
+		if _, err := os.Stat(filepath.Join(targetDir, "test-rule.mdc")); os.IsNotExist(err) {
+			t.Error("Filtered rule file was not installed")
+		}
+		if _, err := os.Stat(filepath.Join(targetDir, "another-rule.mdc")); !os.IsNotExist(err) {
+			t.Error("Non-filtered rule file should not be installed")
+		}
+	})
+
+	t.Run("install claude rules with memory mode", func(t *testing.T) {
+		// Create compiled directory for Claude
+		compiledDir := filepath.Join("compiled", "claude")
+		err := os.MkdirAll(compiledDir, 0755)
+		if err != nil {
+			t.Fatalf("Failed to create compiled directory: %v", err)
+		}
+
+		// Create Claude-specific files
+		commandContent := "# Command Rule\nThis is a command rule."
+		memoryContent := "# Memory Rule\nThis is a memory rule."
+
+		err = os.WriteFile(filepath.Join(compiledDir, "command-rule.md"), []byte(commandContent), 0644)
+		if err != nil {
+			t.Fatalf("Failed to create command rule: %v", err)
+		}
+
+		err = os.WriteFile(filepath.Join(compiledDir, "CLAUDE.md"), []byte(memoryContent), 0644)
+		if err != nil {
+			t.Fatalf("Failed to create memory rule: %v", err)
+		}
+
+		installRule = "" // install all
+		installProject = tempDir
+
+		count, err := installForTarget(compiler.TargetClaude)
+		if err != nil {
+			t.Errorf("installForTarget() for Claude failed: %v", err)
+		}
+		if count != 2 {
+			t.Errorf("Expected count 2 for Claude rules, got %d", count)
+		}
+
+		// Verify files were installed in correct locations
+		commandPath := filepath.Join(tempDir, ".claude", "commands", "command-rule.md")
+		if _, err := os.Stat(commandPath); os.IsNotExist(err) {
+			t.Error("Command rule was not installed in commands directory")
+		}
+
+		// CLAUDE.md goes to project root for memory mode
+		claudePath := filepath.Join(tempDir, "CLAUDE.md")
+		if _, err := os.Stat(claudePath); os.IsNotExist(err) {
+			t.Error("CLAUDE.md was not installed in project root for memory mode")
+		}
+	})
+}
+
+func TestInstallRules(t *testing.T) {
+	tempDir := t.TempDir()
+	originalDir, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("Failed to get current directory: %v", err)
+	}
+	defer os.Chdir(originalDir)
+
+	if err := os.Chdir(tempDir); err != nil {
+		t.Fatalf("Failed to change to temp directory: %v", err)
+	}
+
+	// Save original global variables
+	originalTarget := installTarget
+	originalRule := installRule
+	originalProject := installProject
+	originalInteractive := installInteractive
+	defer func() {
+		installTarget = originalTarget
+		installRule = originalRule
+		installProject = originalProject
+		installInteractive = originalInteractive
+	}()
+
+	// Setup compiled directories and files for multiple targets
+	targets := []compiler.Target{compiler.TargetCursor, compiler.TargetClaude}
+	for _, target := range targets {
+		compiledDir := filepath.Join("compiled", string(target))
+		err := os.MkdirAll(compiledDir, 0755)
+		if err != nil {
+			t.Fatalf("Failed to create compiled directory for %s: %v", target, err)
+		}
+
+		// Create sample rule file
+		var fileName string
+		if target == compiler.TargetCursor {
+			fileName = "test-rule.mdc"
+		} else {
+			fileName = "test-rule.md"
+		}
+
+		err = os.WriteFile(filepath.Join(compiledDir, fileName), []byte("# Test Rule"), 0644)
+		if err != nil {
+			t.Fatalf("Failed to create rule file for %s: %v", target, err)
+		}
+	}
+
+	t.Run("install all targets", func(t *testing.T) {
+		installTarget = ""
+		installRule = ""
+		installProject = tempDir
+		installInteractive = false
+
+		installErr := installRules()
+		if installErr != nil {
+			t.Errorf("installRules() failed: %v", installErr)
+		}
+
+		// Verify files were installed for all targets
+		cursorPath := filepath.Join(tempDir, ".cursor", "rules", "test-rule.mdc")
+		if _, err := os.Stat(cursorPath); os.IsNotExist(err) {
+			t.Error("Cursor rule was not installed")
+		}
+
+		claudePath := filepath.Join(tempDir, ".claude", "commands", "test-rule.md")
+		if _, err := os.Stat(claudePath); os.IsNotExist(err) {
+			t.Error("Claude rule was not installed")
+		}
+	})
+
+	t.Run("install specific target", func(t *testing.T) {
+		// Clean up previous test
+		err := os.RemoveAll(filepath.Join(tempDir, ".cursor"))
+		if err != nil {
+			t.Fatalf("Failed to clean up: %v", err)
+		}
+		err = os.RemoveAll(filepath.Join(tempDir, ".claude"))
+		if err != nil {
+			t.Fatalf("Failed to clean up: %v", err)
+		}
+
+		installTarget = "cursor"
+		installRule = ""
+		installProject = tempDir
+		installInteractive = false
+
+		installErr2 := installRules()
+		if installErr2 != nil {
+			t.Errorf("installRules() for specific target failed: %v", installErr2)
+		}
+
+		// Verify only cursor rule was installed
+		cursorPath := filepath.Join(tempDir, ".cursor", "rules", "test-rule.mdc")
+		if _, err := os.Stat(cursorPath); os.IsNotExist(err) {
+			t.Error("Cursor rule was not installed")
+		}
+
+		claudePath := filepath.Join(tempDir, ".claude", "commands", "test-rule.md")
+		if _, err := os.Stat(claudePath); !os.IsNotExist(err) {
+			t.Error("Claude rule should not be installed when targeting cursor only")
+		}
+	})
+
+	t.Run("invalid target", func(t *testing.T) {
+		installTarget = "invalid-target"
+		installRule = ""
+		installProject = tempDir
+		installInteractive = false
+
+		err := installRules()
+		if err == nil {
+			t.Error("Expected error for invalid target")
+		}
+		if !strings.Contains(err.Error(), "invalid target") {
+			t.Errorf("Expected 'invalid target' error, got: %v", err)
+		}
+	})
+}
+
+func TestRecordInstallation(t *testing.T) {
+	tempDir := t.TempDir()
+	originalDir, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("Failed to get current directory: %v", err)
+	}
+	defer os.Chdir(originalDir)
+
+	if err := os.Chdir(tempDir); err != nil {
+		t.Fatalf("Failed to change to temp directory: %v", err)
+	}
+
+	// Save original global variables
+	originalProject := installProject
+	defer func() {
+		installProject = originalProject
+	}()
+
+	t.Run("record global installation", func(t *testing.T) {
+		installProject = ""
+
+		err := recordInstallation(compiler.TargetCursor, "test-rule", "/global/path/test-rule.mdc", "normal")
+		if err != nil {
+			t.Errorf("recordInstallation() failed: %v", err)
+		}
+	})
+
+	t.Run("record project installation", func(t *testing.T) {
+		installProject = tempDir
+
+		err := recordInstallation(compiler.TargetClaude, "project-rule", filepath.Join(tempDir, "project-rule.md"), "command")
+		if err != nil {
+			t.Errorf("recordInstallation() for project failed: %v", err)
+		}
+	})
+}
+
+func TestInstallFileWithMode(t *testing.T) {
+	tempDir := t.TempDir()
+
+	// Create source file
+	sourceContent := "# Test Rule\nThis is a test rule with $ARGUMENTS placeholder."
+	sourcePath := filepath.Join(tempDir, "source.md")
+	if err := os.WriteFile(sourcePath, []byte(sourceContent), 0644); err != nil {
+		t.Fatalf("Failed to create source file: %v", err)
+	}
+
+	t.Run("install file with command mode", func(t *testing.T) {
+		targetPath := filepath.Join(tempDir, "command.md")
+
+		err := installFileWithMode(sourcePath, targetPath, compiler.TargetClaude, "command")
+		if err != nil {
+			t.Errorf("installFileWithMode() failed: %v", err)
+		}
+
+		// Check that file was created
+		if _, err := os.Stat(targetPath); os.IsNotExist(err) {
+			t.Error("Target file was not created")
+		}
+
+		// Check content contains $ARGUMENTS
+		content, err := os.ReadFile(targetPath)
+		if err != nil {
+			t.Errorf("Failed to read target file: %v", err)
+		}
+
+		if !strings.Contains(string(content), "$ARGUMENTS") {
+			t.Error("Command mode file should contain $ARGUMENTS placeholder")
+		}
+	})
+
+	t.Run("install file with memory mode", func(t *testing.T) {
+		targetPath := filepath.Join(tempDir, "memory.md")
+
+		err := installFileWithMode(sourcePath, targetPath, compiler.TargetClaude, "memory")
+		if err != nil {
+			t.Errorf("installFileWithMode() for memory mode failed: %v", err)
+		}
+
+		// Memory mode should append to CLAUDE.md rather than replace
+		if _, err := os.Stat(targetPath); os.IsNotExist(err) {
+			t.Error("Target file was not created")
+		}
+	})
+
+	t.Run("install file with normal mode", func(t *testing.T) {
+		targetPath := filepath.Join(tempDir, "normal.md")
+
+		err := installFileWithMode(sourcePath, targetPath, compiler.TargetCursor, "")
+		if err != nil {
+			t.Errorf("installFileWithMode() for normal mode failed: %v", err)
+		}
+
+		if _, err := os.Stat(targetPath); os.IsNotExist(err) {
+			t.Error("Target file was not created")
+		}
+	})
+}
