@@ -10,11 +10,15 @@ import (
 	"sort"
 	"strings"
 
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
-	"github.com/ratler/airuler/internal/config"
 	"github.com/spf13/cobra"
+
+	"github.com/ratler/airuler/internal/config"
+	"github.com/ratler/airuler/internal/ui"
+	"github.com/ratler/airuler/internal/utils"
 )
+
+// Type alias to work around Go compiler parsing issue
+type InstallRecord = config.InstallationRecord
 
 var (
 	uninstallTarget      string
@@ -154,167 +158,9 @@ func loadInstallations() ([]config.InstallationRecord, error) {
 	return allInstallations, nil
 }
 
-// BubbleTea model for interactive selection
-type selectionModel struct {
-	items        []selectionItem
-	selected     map[int]bool
-	cursor       int
-	done         bool
-	cancelled    bool
-	instructions string
-}
-
 type selectionItem struct {
 	displayText  string
 	installation config.InstallationRecord
-}
-
-func (m selectionModel) Init() tea.Cmd {
-	return nil
-}
-
-func (m selectionModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	switch msg := msg.(type) {
-	case tea.KeyMsg:
-		switch msg.String() {
-		case "ctrl+c", "q":
-			m.cancelled = true
-			return m, tea.Quit
-		case "up", "k":
-			m.cursor = m.findPrevSelectableItem(m.cursor)
-		case "down", "j":
-			m.cursor = m.findNextSelectableItem(m.cursor)
-		case " ":
-			// Toggle selection only if not a group header
-			if !m.isGroupHeader(m.cursor) {
-				if m.selected[m.cursor] {
-					delete(m.selected, m.cursor)
-				} else {
-					m.selected[m.cursor] = true
-				}
-			}
-		case "enter":
-			m.done = true
-			return m, tea.Quit
-		}
-	}
-	return m, nil
-}
-
-// Helper functions for navigation
-func (m selectionModel) isGroupHeader(index int) bool {
-	if index < 0 || index >= len(m.items) {
-		return false
-	}
-	return strings.HasPrefix(m.items[index].displayText, "GROUP_HEADER:")
-}
-
-func (m selectionModel) findNextSelectableItem(current int) int {
-	for i := current + 1; i < len(m.items); i++ {
-		if !m.isGroupHeader(i) {
-			return i
-		}
-	}
-	return current // Stay at current if no next selectable item
-}
-
-func (m selectionModel) findPrevSelectableItem(current int) int {
-	for i := current - 1; i >= 0; i-- {
-		if !m.isGroupHeader(i) {
-			return i
-		}
-	}
-	return current // Stay at current if no previous selectable item
-}
-
-func (m selectionModel) View() string {
-	var s strings.Builder
-
-	// Title
-	titleStyle := lipgloss.NewStyle().
-		Bold(true).
-		Foreground(lipgloss.Color("255")). // White
-		MarginBottom(1)
-
-	s.WriteString(titleStyle.Render("Select templates to uninstall:"))
-	s.WriteString("\n\n")
-
-	// Table header
-	headerStyle := lipgloss.NewStyle().
-		Bold(true).
-		Foreground(lipgloss.Color("255")). // White text
-		Background(lipgloss.Color("238"))  // Gray background
-
-	s.WriteString(headerStyle.Render(fmt.Sprintf("   %-3s %-8s %-20s %-8s %-25s %-15s", "SEL", "TARGET", "RULE", "MODE", "FILE", "INSTALLED")))
-	s.WriteString("\n")
-
-	// Separator line
-	separatorStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("244")) // Medium gray
-	s.WriteString(separatorStyle.Render(strings.Repeat("─", 82)))
-	s.WriteString("\n")
-
-	// Table rows
-	selectedStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("255")).Background(lipgloss.Color("238"))               // White on gray
-	unselectedStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("252"))                                               // Light gray
-	cursorStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("255")).Bold(true)                                        // White
-	groupHeaderStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("255")).Bold(true).Background(lipgloss.Color("236")) // White on dark gray
-
-	for i, item := range m.items {
-		// Handle group headers
-		if strings.HasPrefix(item.displayText, "GROUP_HEADER:") {
-			groupName := strings.TrimPrefix(item.displayText, "GROUP_HEADER:")
-			s.WriteString("\n")
-			s.WriteString(groupHeaderStyle.Render(fmt.Sprintf("   %s", groupName)))
-			s.WriteString("\n")
-			continue
-		}
-
-		// Parse display text to extract components
-		target, rule, mode, fileName, timeAgo := parseDisplayText(item.displayText, item.installation)
-
-		cursor := " "
-		if i == m.cursor {
-			cursor = cursorStyle.Render("►")
-		}
-
-		checkbox := "☐"
-		style := unselectedStyle
-		if m.selected[i] {
-			checkbox = "☑"
-			style = selectedStyle
-		}
-
-		// Format row with proper column widths
-		row := fmt.Sprintf("%s %s %-8s %-20s %-8s %-25s %-15s",
-			cursor, checkbox, target, rule, mode, fileName, timeAgo)
-
-		s.WriteString(style.Render(row))
-		s.WriteString("\n")
-	}
-
-	// Instructions
-	s.WriteString("\n")
-	instructionStyle := lipgloss.NewStyle().
-		Foreground(lipgloss.Color("248")). // Light gray
-		Italic(true)
-	s.WriteString(instructionStyle.Render(m.instructions))
-
-	// Selection counter
-	s.WriteString("\n")
-	counterStyle := lipgloss.NewStyle().
-		Foreground(lipgloss.Color("255")). // White
-		Bold(true)
-	selectedCount := len(m.selected)
-	// Count only selectable items (exclude group headers)
-	selectableCount := 0
-	for i := range m.items {
-		if !m.isGroupHeader(i) {
-			selectableCount++
-		}
-	}
-	s.WriteString(counterStyle.Render(fmt.Sprintf("Selected: %d of %d", selectedCount, selectableCount)))
-
-	return s.String()
 }
 
 // Helper function to parse display text back into components for table display
@@ -331,7 +177,7 @@ func parseDisplayText(_ string, installation config.InstallationRecord) (target,
 	}
 
 	fileName = filepath.Base(installation.FilePath)
-	timeAgo = formatTimeAgo(installation.InstalledAt)
+	timeAgo = utils.FormatTimeAgo(installation.InstalledAt)
 
 	// Truncate long strings to fit table columns
 	if len(rule) > 20 {
@@ -346,44 +192,54 @@ func parseDisplayText(_ string, installation config.InstallationRecord) (target,
 
 func runInteractiveSelection(installations []config.InstallationRecord) ([]config.InstallationRecord, error) {
 	// Convert installations to selection items
-	items := prepareSelectionItems(installations)
+	selectionItems := prepareSelectionItems(installations)
 
-	if len(items) == 0 {
+	if len(selectionItems) == 0 {
 		return nil, nil
 	}
 
-	// Create BubbleTea model
-	model := selectionModel{
-		items:        items,
-		selected:     make(map[int]bool),
-		cursor:       0,
-		done:         false,
-		cancelled:    false,
-		instructions: "↑/↓: navigate • space: toggle • enter: confirm • q: quit",
+	// Convert to generic interactive items
+	var items []ui.InteractiveItem
+	for _, item := range selectionItems {
+		items = append(items, ui.InteractiveItem{
+			DisplayText: item.displayText,
+			ID:          fmt.Sprintf("%s:%s", item.installation.Target, item.installation.Rule),
+			Data:        item.installation,
+			IsInstalled: false, // For uninstall, all items are "installed" but we treat them as uninstallable
+		})
 	}
 
-	// Set cursor to first selectable item
-	model.cursor = model.findNextSelectableItem(-1)
+	// Custom formatter for uninstall items
+	formatter := func(item ui.InteractiveItem, cursor, checkbox string) string {
+		installation := item.Data.(config.InstallationRecord)
+		target, rule, mode, fileName, timeAgo := parseDisplayText("", installation)
 
-	// Run the interactive program
-	program := tea.NewProgram(model)
-	finalModel, err := program.Run()
+		return fmt.Sprintf("%s %s %-8s %-20s %-8s %-25s %-15s",
+			cursor, checkbox, target, rule, mode, fileName, timeAgo)
+	}
+
+	// Create interactive config
+	config := ui.InteractiveConfig{
+		Title:        "Select templates to uninstall:",
+		Instructions: "↑/↓: navigate • space: toggle • enter: confirm • q: quit",
+		Items:        items,
+		Formatter:    formatter,
+	}
+
+	// Run interactive selection
+	selectedItems, cancelled, err := ui.RunInteractiveSelection(config)
 	if err != nil {
 		return nil, fmt.Errorf("interactive selection failed: %w", err)
 	}
 
-	// Extract results
-	final := finalModel.(selectionModel)
-	if final.cancelled {
+	if cancelled {
 		return nil, nil
 	}
 
-	var result []config.InstallationRecord
-	for i := range final.selected {
-		// Skip group headers
-		if !final.isGroupHeader(i) {
-			result = append(result, final.items[i].installation)
-		}
+	// Convert back to installation records
+	result := make([]InstallRecord, 0, len(selectedItems))
+	for _, item := range selectedItems {
+		result = append(result, item.Data.(InstallRecord))
 	}
 
 	return result, nil
@@ -394,8 +250,10 @@ func prepareSelectionItems(installations []config.InstallationRecord) []selectio
 	groups := make(map[string][]config.InstallationRecord)
 
 	for _, install := range installations {
-		groupKey := "🌍 Global"
-		if !install.Global {
+		var groupKey string
+		if install.Global {
+			groupKey = "🌍 Global"
+		} else {
 			if install.ProjectPath != "" {
 				projectName := filepath.Base(install.ProjectPath)
 				groupKey = fmt.Sprintf("📁 Project: %s", projectName)
@@ -546,7 +404,7 @@ func displayUninstallTableSection(installations []config.InstallationRecord) {
 		}
 
 		fileName := filepath.Base(install.FilePath)
-		timeAgo := formatTimeAgo(install.InstalledAt)
+		timeAgo := utils.FormatTimeAgo(install.InstalledAt)
 
 		// Truncate long strings
 		if len(rule) > 20 {
