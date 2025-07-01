@@ -252,7 +252,7 @@ func (m InteractiveModel) calculateItemLine(itemIndex int) int {
 				// If cursor is on a regular item, return its line
 				return line
 			}
-			line += 1 // Regular items take 1 line
+			line++ // Regular items take 1 line
 		}
 	}
 	return line

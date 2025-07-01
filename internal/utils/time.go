@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 // SPDX-FileCopyrightText: Copyright (c) 2025 Stefan Wold <ratler@stderr.eu>
 
+//revive:disable:var-naming
 package utils
 
 import (
@@ -32,8 +33,7 @@ func FormatTimeAgo(t time.Time) string {
 			return "1 day ago"
 		}
 		return fmt.Sprintf("%d days ago", days)
-	} else {
-		// For very old installations, show the actual date
-		return t.Format("2006-01-02")
 	}
+	// For very old installations, show the actual date
+	return t.Format("2006-01-02")
 }

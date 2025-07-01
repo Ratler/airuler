@@ -20,6 +20,7 @@ func TestLoadInstallationTracker(t *testing.T) {
 		}
 		if tracker == nil {
 			t.Error("LoadInstallationTracker(\"\") returned nil tracker")
+			return
 		}
 		if len(tracker.Installations) != 0 {
 			t.Errorf("LoadInstallationTracker(\"\") returned %d installations, want 0", len(tracker.Installations))
@@ -34,6 +35,7 @@ func TestLoadInstallationTracker(t *testing.T) {
 		}
 		if tracker == nil {
 			t.Error("LoadInstallationTracker returned nil tracker")
+			return
 		}
 		if len(tracker.Installations) != 0 {
 			t.Errorf("LoadInstallationTracker returned %d installations, want 0", len(tracker.Installations))

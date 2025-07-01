@@ -12,6 +12,9 @@ import (
 	"strings"
 	"time"
 
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
+
 	"github.com/ratler/airuler/internal/compiler"
 	"github.com/ratler/airuler/internal/config"
 	"github.com/ratler/airuler/internal/ui"
@@ -827,7 +830,7 @@ func loadAvailableTemplates() ([]installSelectionItem, error) {
 		// Add group header if we have multiple targets
 		if len(groups) > 1 {
 			items = append(items, installSelectionItem{
-				displayText: fmt.Sprintf("GROUP_HEADER:📦 %s", strings.Title(string(target))),
+				displayText: fmt.Sprintf("GROUP_HEADER:📦 %s", cases.Title(language.English).String(string(target))),
 			})
 		}
 
@@ -950,5 +953,5 @@ type fakeFileInfo struct {
 
 func (f fakeFileInfo) Name() string               { return f.name }
 func (f fakeFileInfo) IsDir() bool                { return false }
-func (f fakeFileInfo) Type() os.FileMode          { return f.FileInfo.Mode() }
+func (f fakeFileInfo) Type() os.FileMode          { return f.Mode() }
 func (f fakeFileInfo) Info() (os.FileInfo, error) { return f.FileInfo, nil }
