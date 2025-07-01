@@ -582,27 +582,31 @@ airuler version                       # Show version information
 ```bash
 airuler compile                       # Compile for all targets
 airuler compile claude                # Compile for Claude Code only
-airuler compile --rule my-rule        # Compile specific rule
-airuler compile --vendor frontend     # Compile from vendor
+airuler compile --rule my-rule        # Compile specific rule (short: -r)
+airuler compile --vendor frontend     # Compile from vendor (short: -v)
 airuler compile --vendors "fe,be"     # Compile from multiple vendors
 ```
 
 ### Installation Options
 ```bash
 airuler install                       # Install all rules globally
-airuler install --project ./app       # Install to project directory
+airuler install --project ./app       # Install to project directory (short: -p)
+airuler install --global              # Install globally (short: -g, default)
 airuler install claude                # Install Claude rules only
 airuler install claude my-rule        # Install specific Claude rule
-airuler install --force               # Overwrite without backup
+airuler install --force               # Overwrite without backup (short: -f)
+airuler install --interactive         # Interactive selection mode (short: -i)
 ```
 
 ### Uninstallation Options
 ```bash
 airuler uninstall                     # Uninstall all tracked installations
-airuler uninstall --project ./app     # Uninstall from project directory
+airuler uninstall --global            # Uninstall only global installations (short: -g)
+airuler uninstall --project           # Uninstall only project installations (short: -p)
 airuler uninstall claude              # Uninstall Claude rules only
 airuler uninstall claude my-rule      # Uninstall specific Claude rule
-airuler uninstall --force             # Skip confirmation prompts
+airuler uninstall --force             # Skip confirmation prompts (short: -f)
+airuler uninstall --interactive       # Interactive selection mode (short: -i)
 ```
 
 ### Configuration Commands
@@ -615,11 +619,14 @@ airuler config edit                   # Edit global configuration
 ### Vendor Management Commands
 ```bash
 airuler fetch <url>                   # Fetch external repository
-airuler fetch <url> --as <alias>      # Fetch with custom alias
-airuler fetch <url> --update          # Update existing vendor
+airuler fetch <url> --as <alias>      # Fetch with custom alias (short: -a)
+airuler fetch <url> --update          # Update existing vendor (short: -u)
 airuler update [vendor...]            # Update vendors
-airuler update --dry-run              # Check for updates only
-airuler update --interactive          # Interactive update mode
+airuler update --dry-run              # Check for updates only (short: -d)
+airuler update --interactive          # Interactive update mode (short: -i)
+airuler update-installed              # Update all tracked installations
+airuler update-installed --global     # Update only global installations (short: -g)
+airuler update-installed --project    # Update only project installations (short: -p)
 airuler vendors list                  # List vendors
 airuler vendors status                # Show vendor status
 airuler vendors check                 # Check for vendor updates
@@ -635,6 +642,13 @@ airuler vendors exclude-all           # Exclude all vendors
 --config <file>                       # Use specific config file
 --verbose                             # Enable verbose output
 --help                                # Show help information
+-h                                    # Show help information (short)
+```
+
+### Additional Commands
+```bash
+airuler list-installed                # List all installed templates
+airuler list-installed --filter <keyword>  # Filter templates by keyword (short: -f)
 ```
 
 ## Advanced Examples
