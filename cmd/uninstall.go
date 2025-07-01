@@ -285,13 +285,11 @@ func prepareSelectionItems(installations []config.InstallationRecord) []selectio
 			return installs[i].Rule < installs[j].Rule
 		})
 
-		// Add group header if multiple groups
-		if len(groups) > 1 {
-			items = append(items, selectionItem{
-				displayText:  fmt.Sprintf("GROUP_HEADER:%s", groupName),
-				installation: config.InstallationRecord{}, // Empty record for headers
-			})
-		}
+		// Add group header
+		items = append(items, selectionItem{
+			displayText:  fmt.Sprintf("GROUP_HEADER:%s", groupName),
+			installation: config.InstallationRecord{}, // Empty record for headers
+		})
 
 		// Add installations
 		for _, install := range installs {
