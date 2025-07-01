@@ -1,0 +1,85 @@
+---
+description: "Example template demonstrating new template variables"
+claude_mode: "memory"
+globs: "**/*.{js,ts,jsx,tsx}"
+project_type: "web-application"
+language: "TypeScript"
+framework: "React"
+tags:
+  - "frontend"
+  - "spa"
+  - "typescript"
+always_apply: "true"
+documentation: "See docs/frontend.md"
+style_guide: "Follow Airbnb JavaScript style guide"
+examples: "Check examples/react-components/"
+custom:
+  build_tool: "Vite"
+  testing_framework: "Jest"
+  package_manager: "npm"
+---
+
+# {{.Language}} {{.Framework}} Development Guidelines
+
+You are an expert {{.Language}} developer working on a {{.ProjectType}} using {{.Framework}}.
+
+## Project Information
+
+{{if .ProjectType}}**Project Type**: {{.ProjectType}}{{end}}
+{{if .Language}}**Language**: {{.Language}}{{end}}
+{{if .Framework}}**Framework**: {{.Framework}}{{end}}
+{{if .Tags}}**Tags**: {{range $i, $tag := .Tags}}{{if $i}}, {{end}}`{{$tag}}`{{end}}{{end}}
+{{if .Documentation}}**Documentation**: {{.Documentation}}{{end}}
+{{if .StyleGuide}}**Style Guide**: {{.StyleGuide}}{{end}}
+{{if .Examples}}**Examples**: {{.Examples}}{{end}}
+
+## Development Standards
+
+{{if eq .Language "TypeScript"}}
+### TypeScript Best Practices
+- Use strict type checking
+- Define interfaces for all data structures
+- Avoid `any` type unless absolutely necessary
+- Use proper generics for reusable components
+{{end}}
+
+{{if eq .Framework "React"}}
+### React Guidelines
+- Use functional components with hooks
+- Follow the single responsibility principle
+- Use proper prop types or TypeScript interfaces
+- Implement proper error boundaries
+{{end}}
+
+{{if .Custom.build_tool}}
+### Build Configuration
+- Build tool: {{.Custom.build_tool}}
+{{if .Custom.testing_framework}}- Testing: {{.Custom.testing_framework}}{{end}}
+{{if .Custom.package_manager}}- Package manager: {{.Custom.package_manager}}{{end}}
+{{end}}
+
+## Code Quality
+
+{{if .StyleGuide}}
+Follow the style guide: {{.StyleGuide}}
+{{end}}
+
+{{if .AlwaysApply}}
+These guidelines should be applied to all files matching: `{{.Globs}}`
+{{end}}
+
+{{if .Documentation}}
+For more information, see: {{.Documentation}}
+{{end}}
+
+{{if .Examples}}
+Reference examples: {{.Examples}}
+{{end}}
+
+## Tag-Based Rules
+
+{{range .Tags}}
+- Apply `{{.}}` specific conventions
+{{end}}
+
+Use these guidelines when reviewing, writing, or refactoring {{.Language}} code in this {{.ProjectType}}.

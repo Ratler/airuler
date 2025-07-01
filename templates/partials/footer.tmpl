@@ -1,0 +1,35 @@
+## Additional Resources
+
+{{if .Documentation}}
+- [Documentation]({{.Documentation}})
+{{end}}
+{{if .StyleGuide}}
+- [Style Guide]({{.StyleGuide}})
+{{end}}
+{{if .Examples}}
+- [Examples]({{.Examples}})
+{{end}}
+
+## Target-Specific Notes
+
+{{if eq .Target "cursor"}}
+**Cursor Integration:**
+- This rule is automatically applied based on file patterns
+- Check the rules panel to see when this rule is active
+- Use Ctrl+. (Cmd+. on Mac) to see available quick fixes
+{{else if eq .Target "claude"}}
+**Claude Code Integration:**
+- Invoke with `/{{lower .Name}} $ARGUMENTS`
+- Arguments are passed as context to the rule
+- Rule content is injected into your conversation
+{{else if eq .Target "cline"}}
+**Cline Integration:**
+- This rule is available in your project's .clinerules directory
+- Rules are automatically loaded when Cline starts
+- Use natural language to reference these guidelines
+{{else if eq .Target "copilot"}}
+**GitHub Copilot Integration:**
+- Applied automatically to matching file patterns
+- Influences code suggestions and completions
+- Works in VS Code, GitHub.com, and other Copilot-enabled editors
+{{end}}

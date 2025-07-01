@@ -1,0 +1,127 @@
+{{template "partials/header" .}}
+
+This rule provides comprehensive guidelines for TypeScript React development, demonstrating advanced airuler template features including partials, conditionals, and custom variables.
+
+{{if eq .Target "claude"}}
+## Usage
+Invoke with `/typescript-react $ARGUMENTS` where arguments can include:
+- `component` - for component-specific guidance
+- `hooks` - for React hooks patterns  
+- `testing` - for testing guidelines
+- `performance` - for optimization strategies
+{{else}}
+## Scope
+This rule applies to TypeScript React development and covers components, hooks, state management, and testing patterns.
+{{end}}
+
+## Component Development
+
+### Functional Components
+- Prefer functional components over class components
+- Use TypeScript interfaces for prop definitions
+- Implement proper prop validation with TypeScript
+- Use meaningful component and prop names
+
+```typescript
+interface UserCardProps {
+  user: User;
+  onEdit?: (user: User) => void;
+  className?: string;
+}
+
+export const UserCard: React.FC<UserCardProps> = ({ 
+  user, 
+  onEdit, 
+  className 
+}) => {
+  // Component implementation
+};
+```
+
+### Custom Hooks
+- Extract reusable logic into custom hooks
+- Follow the `use` prefix convention
+- Return consistent data structures
+- Handle loading and error states
+
+```typescript
+interface UseApiData<T> {
+  data: T | null;
+  loading: boolean;
+  error: string | null;
+  refetch: () => void;
+}
+
+export const useApiData = <T>(url: string): UseApiData<T> => {
+  // Hook implementation
+};
+```
+
+{{template "partials/common-guidelines" .}}
+
+## React-Specific Guidelines
+
+### State Management
+{{if eq .Target "cursor"}}
+- Use `useState` for local component state
+- Use `useReducer` for complex state logic
+- Consider React Query for server state
+- Implement proper state lifting patterns
+{{else}}
+- Choose appropriate state management based on complexity
+- Keep state as close to usage as possible
+- Use context sparingly for shared state
+- Consider external state management for complex applications
+{{end}}
+
+### Performance Optimization
+- Use `React.memo` for expensive components
+- Implement proper key props for lists
+- Use `useCallback` and `useMemo` judiciously
+- Avoid unnecessary re-renders
+
+### Testing Strategy
+- Write unit tests for individual components
+- Use React Testing Library for component testing
+- Test user interactions and edge cases
+- Mock external dependencies appropriately
+
+{{template "partials/error-handling" .}}
+
+## TypeScript Best Practices
+
+### Type Definitions
+- Define strict interfaces for component props
+- Use union types for constrained values
+- Implement generic types for reusable components
+- Avoid `any` type - use `unknown` when necessary
+
+### File Organization
+```
+src/
+├── components/
+│   ├── ui/           # Reusable UI components
+│   └── features/     # Feature-specific components
+├── hooks/            # Custom React hooks
+├── types/            # TypeScript type definitions
+├── utils/            # Utility functions
+└── __tests__/        # Test files
+```
+
+{{if ne .Target "cline"}}
+## Advanced Patterns
+
+### Higher-Order Components (HOCs)
+- Use HOCs for cross-cutting concerns
+- Implement proper TypeScript typing for HOCs
+- Consider render props as an alternative
+- Document HOC behavior clearly
+
+### Render Props Pattern
+- Use for sharing stateful logic between components
+- Implement proper TypeScript generics
+- Consider custom hooks as a modern alternative
+- Provide clear API documentation
+{{end}}
+
+{{template "partials/footer" .}}

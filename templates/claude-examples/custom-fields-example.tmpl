@@ -1,0 +1,153 @@
+---
+description: "Example template showcasing custom fields functionality"
+claude_mode: "both" 
+globs: "**/*.py"
+project_type: "api"
+language: "Python"
+framework: "FastAPI"
+tags:
+  - "backend"
+  - "api"
+  - "microservice"
+always_apply: "false"
+documentation: "docs/api.md"
+style_guide: "PEP 8 + Black formatting"
+examples: "examples/fastapi/"
+custom:
+  # Database configuration
+  database: "PostgreSQL"
+  orm: "SQLAlchemy"
+  migration_tool: "Alembic"
+  
+  # Testing setup
+  test_framework: "pytest"
+  test_coverage_min: "90%"
+  
+  # Deployment
+  containerization: "Docker"
+  orchestration: "Kubernetes"
+  ci_cd: "GitHub Actions"
+  
+  # Monitoring
+  logging_framework: "structlog"
+  metrics: "Prometheus"
+  tracing: "OpenTelemetry"
+  
+  # Security
+  auth_method: "JWT"
+  rate_limiting: "Redis"
+---
+
+# {{.Framework}} {{.ProjectType | title}} Development Guide
+
+Working with a {{.Language}} {{.ProjectType}} using {{.Framework}}.
+
+## Project Information
+
+{{if .ProjectType}}**Project Type**: {{.ProjectType}}{{end}}
+{{if .Language}}**Language**: {{.Language}}{{end}}
+{{if .Framework}}**Framework**: {{.Framework}}{{end}}
+{{if .Tags}}**Tags**: {{range $i, $tag := .Tags}}{{if $i}}, {{end}}`{{$tag}}`{{end}}{{end}}
+{{if .Documentation}}**Documentation**: {{.Documentation}}{{end}}
+{{if .StyleGuide}}**Style Guide**: {{.StyleGuide}}{{end}}
+{{if .Examples}}**Examples**: {{.Examples}}{{end}}
+
+## Common Development Tasks
+
+{{if eq .ProjectType "api"}}
+### API Development
+- Design RESTful endpoints
+- Implement proper error handling
+- Add request/response validation
+- Write comprehensive tests
+{{else if eq .ProjectType "web-application"}}
+### Web Application Development
+- Implement responsive design
+- Optimize for performance
+- Ensure accessibility compliance
+- Add proper SEO meta tags
+{{else if eq .ProjectType "library"}}
+### Library Development
+- Create clear API documentation
+- Implement comprehensive tests
+- Follow semantic versioning
+- Provide usage examples
+{{end}}
+
+{{if .Language}}
+### {{.Language}}-Specific Tasks
+{{if eq .Language "Go"}}
+- Run `go fmt` and `go vet`
+- Use proper error handling patterns
+- Write benchmark tests
+- Follow Go naming conventions
+{{else if eq .Language "TypeScript"}}
+- Maintain strict type safety
+- Use proper module exports
+- Configure ESLint and Prettier
+- Write type-safe tests
+{{else if eq .Language "Python"}}
+- Follow PEP 8 style guidelines
+- Use type hints where appropriate
+- Configure Black and isort
+- Write docstrings for functions
+{{end}}
+{{end}}
+
+## Technology Stack
+
+### Database Layer
+{{if .Custom.database}}- **Database**: {{.Custom.database}}{{end}}
+{{if .Custom.orm}}- **ORM**: {{.Custom.orm}}{{end}}
+{{if .Custom.migration_tool}}- **Migrations**: {{.Custom.migration_tool}}{{end}}
+
+### Testing Strategy
+{{if .Custom.test_framework}}- **Framework**: {{.Custom.test_framework}}{{end}}
+{{if .Custom.test_coverage_min}}- **Coverage Target**: {{.Custom.test_coverage_min}}{{end}}
+
+### DevOps & Deployment
+{{if .Custom.containerization}}- **Containerization**: {{.Custom.containerization}}{{end}}
+{{if .Custom.orchestration}}- **Orchestration**: {{.Custom.orchestration}}{{end}}
+{{if .Custom.ci_cd}}- **CI/CD**: {{.Custom.ci_cd}}{{end}}
+
+### Observability
+{{if .Custom.logging_framework}}- **Logging**: {{.Custom.logging_framework}}{{end}}
+{{if .Custom.metrics}}- **Metrics**: {{.Custom.metrics}}{{end}}
+{{if .Custom.tracing}}- **Tracing**: {{.Custom.tracing}}{{end}}
+
+### Security
+{{if .Custom.auth_method}}- **Authentication**: {{.Custom.auth_method}}{{end}}
+{{if .Custom.rate_limiting}}- **Rate Limiting**: {{.Custom.rate_limiting}}{{end}}
+
+## Development Workflow
+
+1. **Code Structure**: Follow {{.Framework}} best practices
+2. **Database**: Use {{.Custom.orm}} for data access with {{.Custom.database}}
+3. **Testing**: Write tests using {{.Custom.test_framework}}, aim for {{.Custom.test_coverage_min}} coverage
+4. **Security**: Implement {{.Custom.auth_method}} authentication
+5. **Monitoring**: Add {{.Custom.logging_framework}} logging and {{.Custom.metrics}} metrics
+
+{{if eq .AlwaysApply "false"}}
+## Conditional Application
+
+These rules apply to specific scenarios, not all files matching `{{.Globs}}`.
+{{else}}
+## Universal Application
+
+Apply these guidelines to all files matching `{{.Globs}}`.
+{{end}}
+
+## Custom Configuration Access
+
+To access any custom field in templates, use the `.Custom.field_name` syntax:
+- Database: `{{.Custom.database}}`
+- Test Framework: `{{.Custom.test_framework}}`
+- CI/CD: `{{.Custom.ci_cd}}`
+
+{{if .Documentation}}
+📖 **Additional Documentation**: {{.Documentation}}
+{{end}}
+
+{{if .Examples}}
+💡 **Code Examples**: {{.Examples}}
+{{end}}
