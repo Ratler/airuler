@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -141,10 +142,21 @@ func runListInstalled() error {
 		})
 	}
 
+	// Check for missing files
+	var missingFiles int
+	for i := range allInstalls {
+		if _, err := os.Stat(allInstalls[i].FilePath); os.IsNotExist(err) {
+			missingFiles++
+		}
+	}
+
 	// Display header
 	fmt.Println("📋 Installed Templates")
 	if listFilter != "" {
 		fmt.Printf("🔍 Filter: \"%s\"\n", listFilter)
+	}
+	if missingFiles > 0 {
+		fmt.Printf("⚠️  Warning: %d template file(s) are missing\n", missingFiles)
 	}
 	fmt.Println()
 
@@ -207,6 +219,12 @@ func displayTable(installs []uniqueInstall) {
 		}
 
 		fileName := filepath.Base(install.FilePath)
+
+		// Check if file exists and add indicator
+		if _, err := os.Stat(install.FilePath); os.IsNotExist(err) {
+			fileName = fileName + " ⚠️"
+		}
+
 		timeAgo := formatTimeAgo(install.InstalledAt)
 
 		// Truncate long strings

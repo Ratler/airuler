@@ -60,6 +60,6 @@ Examples:
 func init() {
 	rootCmd.AddCommand(fetchCmd)
 
-	fetchCmd.Flags().StringVar(&fetchAlias, "as", "", "alias for the vendor")
-	fetchCmd.Flags().BoolVar(&fetchUpdate, "update", false, "update if vendor already exists")
+	fetchCmd.Flags().StringVarP(&fetchAlias, "as", "a", "", "alias for the vendor")
+	fetchCmd.Flags().BoolVarP(&fetchUpdate, "update", "u", false, "update if vendor already exists")
 }

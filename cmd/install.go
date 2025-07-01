@@ -62,10 +62,10 @@ Examples:
 func init() {
 	rootCmd.AddCommand(installCmd)
 
-	installCmd.Flags().BoolVar(&installGlobal, "global", true, "install to global configuration (default)")
-	installCmd.Flags().StringVar(&installProject, "project", "", "install to specific project directory")
-	installCmd.Flags().BoolVar(&installForce, "force", false, "overwrite without confirmation")
-	installCmd.Flags().BoolVar(&installInteractive, "interactive", false, "use interactive checkbox selection")
+	installCmd.Flags().BoolVarP(&installGlobal, "global", "g", true, "install to global configuration (default)")
+	installCmd.Flags().StringVarP(&installProject, "project", "p", "", "install to specific project directory")
+	installCmd.Flags().BoolVarP(&installForce, "force", "f", false, "overwrite without confirmation")
+	installCmd.Flags().BoolVarP(&installInteractive, "interactive", "i", false, "use interactive checkbox selection")
 
 	// Make --force and --interactive mutually exclusive
 	installCmd.MarkFlagsMutuallyExclusive("force", "interactive")

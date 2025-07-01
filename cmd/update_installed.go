@@ -65,8 +65,8 @@ Examples:
 func init() {
 	rootCmd.AddCommand(updateInstalledCmd)
 
-	updateInstalledCmd.Flags().BoolVar(&updateInstalledGlobal, "global", false, "update only global installations")
-	updateInstalledCmd.Flags().BoolVar(&updateInstalledProject, "project", false, "update only project installations")
+	updateInstalledCmd.Flags().BoolVarP(&updateInstalledGlobal, "global", "g", false, "update only global installations")
+	updateInstalledCmd.Flags().BoolVarP(&updateInstalledProject, "project", "p", false, "update only project installations")
 }
 
 func updateInstalledRules() error {

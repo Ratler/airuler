@@ -69,8 +69,8 @@ Examples:
 func init() {
 	rootCmd.AddCommand(updateCmd)
 
-	updateCmd.Flags().BoolVar(&updateInteractive, "interactive", false, "interactive mode with confirmation prompts")
-	updateCmd.Flags().BoolVar(&updateDryRun, "dry-run", false, "show what would be updated without doing it")
+	updateCmd.Flags().BoolVarP(&updateInteractive, "interactive", "i", false, "interactive mode with confirmation prompts")
+	updateCmd.Flags().BoolVarP(&updateDryRun, "dry-run", "d", false, "show what would be updated without doing it")
 }
 
 func showUpdateStatus(manager *vendor.Manager, _ []string) error {

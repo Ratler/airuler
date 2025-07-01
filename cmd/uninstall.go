@@ -72,10 +72,10 @@ Examples:
 func init() {
 	rootCmd.AddCommand(uninstallCmd)
 
-	uninstallCmd.Flags().BoolVar(&uninstallGlobal, "global", false, "uninstall only global installations")
-	uninstallCmd.Flags().BoolVar(&uninstallProject, "project", false, "uninstall only project installations")
-	uninstallCmd.Flags().BoolVar(&uninstallForce, "force", false, "skip confirmation prompts")
-	uninstallCmd.Flags().BoolVar(&uninstallInteractive, "interactive", false, "use interactive checkbox selection")
+	uninstallCmd.Flags().BoolVarP(&uninstallGlobal, "global", "g", false, "uninstall only global installations")
+	uninstallCmd.Flags().BoolVarP(&uninstallProject, "project", "p", false, "uninstall only project installations")
+	uninstallCmd.Flags().BoolVarP(&uninstallForce, "force", "f", false, "skip confirmation prompts")
+	uninstallCmd.Flags().BoolVarP(&uninstallInteractive, "interactive", "i", false, "use interactive checkbox selection")
 
 	// Make --force and --interactive mutually exclusive
 	uninstallCmd.MarkFlagsMutuallyExclusive("force", "interactive")

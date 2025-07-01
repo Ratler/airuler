@@ -81,9 +81,9 @@ Examples:
 func init() {
 	rootCmd.AddCommand(compileCmd)
 
-	compileCmd.Flags().StringVar(&vendorFlag, "vendor", "", "compile from specific vendor")
+	compileCmd.Flags().StringVarP(&vendorFlag, "vendor", "v", "", "compile from specific vendor")
 	compileCmd.Flags().StringVar(&vendorsFlag, "vendors", "", "compile from specific vendors (comma-separated)")
-	compileCmd.Flags().StringVar(&ruleFlag, "rule", "", "compile specific rule")
+	compileCmd.Flags().StringVarP(&ruleFlag, "rule", "r", "", "compile specific rule")
 }
 
 func compileTemplates(targets []compiler.Target) error {
