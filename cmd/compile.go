@@ -101,6 +101,47 @@ func compileTemplates(targets []compiler.Target) error {
 		}
 	}
 
+	// Get current working directory for vendor config loading
+	currentDir, err := os.Getwd()
+	if err != nil {
+		return fmt.Errorf("failed to get current directory: %w", err)
+	}
+
+	// Load project configuration
+	var projectConfig *config.Config
+	if viper.ConfigFileUsed() != "" {
+		projectConfig = &config.Config{
+			Defaults: config.DefaultConfig{
+				IncludeVendors: viper.GetStringSlice("defaults.include_vendors"),
+			},
+			VendorOverrides: make(map[string]config.VendorConfig),
+		}
+		// Load vendor overrides from viper if they exist
+		if viper.IsSet("vendor_overrides") {
+			overrides := viper.GetStringMap("vendor_overrides")
+			for vendorName := range overrides {
+				// Convert the interface{} to VendorConfig - simplified for now
+				projectConfig.VendorOverrides[vendorName] = config.NewDefaultVendorConfig()
+			}
+		}
+	} else {
+		projectConfig = config.NewDefaultConfig()
+	}
+
+	// Load vendor configurations
+	vendorConfigs, err := config.LoadVendorConfigs(currentDir, projectConfig)
+	if err != nil {
+		return fmt.Errorf("failed to load vendor configurations: %w", err)
+	}
+
+	// Validate vendor configurations
+	if validationErrors := vendorConfigs.ValidateVendorConfigs(); len(validationErrors) > 0 {
+		fmt.Printf("Warning: Vendor configuration validation errors:\n")
+		for _, err := range validationErrors {
+			fmt.Printf("  - %v\n", err)
+		}
+	}
+
 	// Load templates
 	templateDirs := []string{"templates"}
 
@@ -202,26 +243,11 @@ func compileTemplates(targets []compiler.Target) error {
 				frontMatter.Custom = make(map[string]interface{})
 			}
 
-			data := template.Data{
-				Name: templateName,
-				Description: getValueOrDefault(
-					frontMatter.Description,
-					fmt.Sprintf("AI coding rules for %s", templateName),
-				),
-				Globs: getGlobsValue(frontMatter.Globs),
-				Mode:  frontMatter.ClaudeMode,
+			// Resolve vendor configuration context for this template
+			templateContext := vendorConfigs.ResolveTemplateContext(templateSource.SourceType, string(target))
 
-				// Extended fields from template front matter
-				ProjectType:   frontMatter.ProjectType,
-				Language:      frontMatter.Language,
-				Framework:     frontMatter.Framework,
-				Tags:          frontMatter.Tags,
-				AlwaysApply:   frontMatter.AlwaysApply,
-				Documentation: frontMatter.Documentation,
-				StyleGuide:    frontMatter.StyleGuide,
-				Examples:      frontMatter.Examples,
-				Custom:        frontMatter.Custom,
-			}
+			// Apply vendor defaults and then override with front matter
+			data := createTemplateData(templateName, *frontMatter, templateContext, string(target))
 
 			// Load the clean template content (without front matter)
 			if err := templateComp.LoadTemplate(templateName, cleanTemplateContent); err != nil {
@@ -279,7 +305,6 @@ func compileTemplates(targets []compiler.Target) error {
 	fmt.Printf("\n🎉 Successfully compiled %d rules for %d targets\n", len(templates), len(targets))
 
 	// Update last template directory after successful compilation
-	currentDir, err := os.Getwd()
 	if err == nil && config.IsTemplateDirectory(currentDir) {
 		if err := config.UpdateLastTemplateDir(currentDir); err != nil && viper.GetBool("verbose") {
 			fmt.Printf("Warning: Failed to update last template directory: %v\n", err)
@@ -563,4 +588,122 @@ func getVendorTemplateDirs() []string {
 	}
 
 	return vendorDirs
+}
+
+// createTemplateData merges vendor configuration with front matter to create template data
+func createTemplateData(templateName string, frontMatter TemplateFrontMatter, context config.ResolvedTemplateContext, target string) template.Data {
+	// Start with vendor defaults
+	data := template.Data{
+		Name:   templateName,
+		Target: target,
+	}
+
+	// Apply vendor template defaults first
+	applyVendorDefaults(&data, context.TemplateDefaults)
+
+	// Apply vendor variables
+	if data.Custom == nil {
+		data.Custom = make(map[string]interface{})
+	}
+	for key, value := range context.Variables {
+		data.Custom[key] = value
+	}
+
+	// Override with front matter (front matter takes precedence)
+	data.Description = getValueOrDefault(
+		frontMatter.Description,
+		getStringFromVendorDefaults(context.TemplateDefaults, "description", fmt.Sprintf("AI coding rules for %s", templateName)),
+	)
+	data.Globs = getGlobsValue(frontMatter.Globs)
+
+	// Determine Claude mode from front matter, vendor config, or default
+	data.Mode = frontMatter.ClaudeMode
+	if data.Mode == "" && target == "claude" {
+		data.Mode = context.TargetConfig.DefaultMode
+	}
+
+	// Override with front matter fields (front matter always wins)
+	if frontMatter.ProjectType != "" {
+		data.ProjectType = frontMatter.ProjectType
+	}
+	if frontMatter.Language != "" {
+		data.Language = frontMatter.Language
+	}
+	if frontMatter.Framework != "" {
+		data.Framework = frontMatter.Framework
+	}
+	if frontMatter.Tags != nil {
+		data.Tags = frontMatter.Tags
+	}
+	if frontMatter.AlwaysApply != "" {
+		data.AlwaysApply = frontMatter.AlwaysApply
+	}
+	if frontMatter.Documentation != "" {
+		data.Documentation = frontMatter.Documentation
+	}
+	if frontMatter.StyleGuide != "" {
+		data.StyleGuide = frontMatter.StyleGuide
+	}
+	if frontMatter.Examples != "" {
+		data.Examples = frontMatter.Examples
+	}
+
+	// Merge custom fields (front matter overrides vendor)
+	for key, value := range frontMatter.Custom {
+		data.Custom[key] = value
+	}
+
+	return data
+}
+
+// applyVendorDefaults applies vendor default values to template data
+func applyVendorDefaults(data *template.Data, defaults map[string]interface{}) {
+	if projectType, ok := defaults["project_type"].(string); ok && data.ProjectType == "" {
+		data.ProjectType = projectType
+	}
+	if language, ok := defaults["language"].(string); ok && data.Language == "" {
+		data.Language = language
+	}
+	if framework, ok := defaults["framework"].(string); ok && data.Framework == "" {
+		data.Framework = framework
+	}
+	if tags, ok := defaults["tags"].([]interface{}); ok && data.Tags == nil {
+		var stringTags []string
+		for _, tag := range tags {
+			if tagStr, ok := tag.(string); ok {
+				stringTags = append(stringTags, tagStr)
+			}
+		}
+		data.Tags = stringTags
+	}
+	if alwaysApply, ok := defaults["always_apply"].(string); ok && data.AlwaysApply == "" {
+		data.AlwaysApply = alwaysApply
+	}
+	if documentation, ok := defaults["documentation"].(string); ok && data.Documentation == "" {
+		data.Documentation = documentation
+	}
+	if styleGuide, ok := defaults["style_guide"].(string); ok && data.StyleGuide == "" {
+		data.StyleGuide = styleGuide
+	}
+	if examples, ok := defaults["examples"].(string); ok && data.Examples == "" {
+		data.Examples = examples
+	}
+	if custom, ok := defaults["custom"].(map[string]interface{}); ok {
+		if data.Custom == nil {
+			data.Custom = make(map[string]interface{})
+		}
+		for key, value := range custom {
+			if _, exists := data.Custom[key]; !exists {
+				data.Custom[key] = value
+			}
+		}
+	}
+}
+
+// getStringFromVendorDefaults safely gets a string value from vendor defaults
+func getStringFromVendorDefaults(defaults map[string]interface{}, key, fallback string) string {
+	if value, ok := defaults[key].(string); ok && value != "" {
+		return value
+	}
+	return fallback
 }

@@ -81,6 +81,11 @@ func setupWorkingDirectory() {
 	// Store the original working directory for commands that need it
 	originalWorkingDir = currentDir
 
+	// Don't switch directories for commands that should work in the current directory
+	if shouldSkipDirectorySwitching() {
+		return
+	}
+
 	// Check if current directory is a template directory
 	if config.IsTemplateDirectory(currentDir) {
 		// Update the last template directory
@@ -119,6 +124,36 @@ func setupWorkingDirectory() {
 
 	// Inform user that we're using the template directory
 	fmt.Printf("Using template directory: %s\n", lastTemplateDir)
+}
+
+// shouldSkipDirectorySwitching returns true for commands that should not automatically
+// switch to the last template directory
+func shouldSkipDirectorySwitching() bool {
+	// Get the command being executed
+	if len(os.Args) < 2 {
+		return false
+	}
+
+	command := os.Args[1]
+
+	// Commands that should NOT auto-switch to last template directory
+	skipCommands := []string{
+		"init",      // Creates new projects, should respect current directory
+		"config",    // Configuration commands work globally
+		"help",      // Help commands don't need template directory
+		"version",   // Version command doesn't need template directory
+		"--help",    // Help flag
+		"-h",        // Help flag
+		"--version", // Version flag
+	}
+
+	for _, skipCmd := range skipCommands {
+		if command == skipCmd {
+			return true
+		}
+	}
+
+	return false
 }
 
 // GetOriginalWorkingDir returns the working directory that was active when airuler started,

@@ -34,13 +34,19 @@ custom:                                     # → {{.Custom}} (map)
 
 ## Template Variables
 
-Variables are populated from three sources:
+Variables are populated from four sources (in order of precedence):
 
 ### 1. System Variables (Always Available)
 - `{{.Target}}` - Current compilation target (cursor, claude, cline, copilot, roo)
 - `{{.Name}}` - Template filename without extension (e.g., "my-rules" from "my-rules.tmpl")
 
-### 2. Front Matter Variables (From YAML Header)
+### 2. Vendor Configuration (If Template is from Vendor)
+Vendor configurations provide default values that can be overridden by template front matter:
+- Template defaults from vendor's `template_defaults` section
+- Custom variables from vendor's `variables` section
+- Target-specific settings from vendor's `targets` section
+
+### 3. Front Matter Variables (From YAML Header)
 Basic fields:
 - `{{.Description}}` - From `description:` field (defaults to "AI coding rules for {{.Name}}")
 - `{{.Globs}}` - From `globs:` field (defaults to "**/*")
@@ -57,7 +63,9 @@ Extended fields (all optional):
 - `{{.Examples}}` - From `examples:` field
 - `{{.Custom}}` - From `custom:` field (map for arbitrary key-value pairs)
 
-### 3. Usage Example
+**Precedence:** Template front matter always overrides vendor defaults.
+
+### 4. Usage Example
 
 Template with front matter (`templates/react-standards.tmpl`):
 ```yaml

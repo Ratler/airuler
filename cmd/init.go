@@ -19,23 +19,23 @@ import (
 var initCmd = &cobra.Command{
 	Use:   "init [path]",
 	Short: "Initialize a new airuler project",
-	Long: `Initialize a new airuler project with the standard directory structure.
+	Long: `Initialize a new airuler project with the modern directory structure.
 
 If no path is provided, initializes in the current directory.
 If a path is provided, creates the directory and initializes the project there.
 
 Project Structure:
-├── templates/          # Your rule templates
-│   ├── partials/      # Reusable template components
+├── templates/         # Your rule templates (.tmpl)
+│   ├── components/    # Reusable components (.ptmpl)
 │   └── examples/      # Example templates  
 ├── vendors/           # External rule repositories
 ├── compiled/          # Generated rules for each target
-│   ├── cursor/       # Cursor IDE rules
-│   ├── claude/       # Claude Code rules
-│   ├── cline/        # Cline rules
-│   ├── copilot/      # GitHub Copilot rules
-│   └── roo/          # Roo Code rules
-├── airuler.yaml       # Project configuration
+│   ├── cursor/        # Cursor IDE rules
+│   ├── claude/        # Claude Code rules
+│   ├── cline/         # Cline rules
+│   ├── copilot/       # GitHub Copilot rules
+│   └── roo/           # Roo Code rules
+├── airuler.yaml       # Project configuration with vendor settings
 ├── airuler.lock       # Vendor dependency locks
 └── README.md          # Project documentation
 
@@ -99,7 +99,7 @@ func initProject(targetPath string) error {
 
 	// Create directory structure
 	dirs := []string{
-		"templates/partials",
+		"templates/components",
 		"templates/examples",
 		"vendors",
 		"compiled/cursor",
@@ -115,14 +115,28 @@ func initProject(targetPath string) error {
 		}
 	}
 
-	// Create default config file
-	cfg := config.NewDefaultConfig()
-	cfgData, err := yaml.Marshal(cfg)
-	if err != nil {
-		return fmt.Errorf("failed to marshal config: %w", err)
-	}
+	// Create default config file with modern structure
 
-	if err := os.WriteFile("airuler.yaml", cfgData, 0600); err != nil {
+	// Create a more comprehensive configuration with comments
+	modernConfigContent := `# airuler project configuration
+defaults:
+  # Vendors to include in compilation
+  # Use ["*"] to include all vendors, or specify specific vendors by name
+  include_vendors: ["*"]
+
+# Vendor-specific overrides (optional)
+# Use this to customize vendor settings without modifying vendor repositories
+# vendor_overrides:
+#   vendor-name:
+#     template_defaults:
+#       project_type: "custom-type"
+#       language: "custom-language"
+#     targets:
+#       claude:
+#         default_mode: "command"  # Override vendor's default mode
+`
+
+	if err := os.WriteFile("airuler.yaml", []byte(modernConfigContent), 0600); err != nil {
 		return fmt.Errorf("failed to write config file: %w", err)
 	}
 
@@ -180,14 +194,15 @@ For more information, documentation, and source code, visit: https://github.com/
 ` + "```" + `
 .
 ├── templates/          # Your rule templates
-│   ├── partials/      # Reusable template components
+│   ├── components/    # Reusable components (.ptmpl)
 │   └── examples/      # Example templates
 ├── vendors/           # External rule repositories (git-ignored)
 ├── compiled/          # Generated rules for each target
 │   ├── cursor/       # Cursor IDE rules (.mdc files)
 │   ├── claude/       # Claude Code rules (.md files)
 │   ├── cline/        # Cline rules (.md files)
-│   └── copilot/      # GitHub Copilot rules (.instructions.md files)
+│   ├── copilot/      # GitHub Copilot rules (.instructions.md files)
+│   └── roo/          # Roo Code rules (.md files)
 ├── airuler.yaml       # Project configuration
 ├── airuler.lock       # Vendor dependency locks
 └── README.md          # This file
@@ -197,27 +212,29 @@ For more information, documentation, and source code, visit: https://github.com/
 
 ### 1. Create Templates
 
-Add your rule templates to the ` + "`templates/`" + ` directory. Templates use Go's text/template syntax with YAML front matter:
+Add your rule templates to the ` + "`templates/`" + ` directory. Templates support rich YAML front matter and reusable components:
 
 ` + "```" + `yaml
 ---
-claude_mode: command
-description: "Code review guidelines"
+claude_mode: both
+description: "Modern coding standards"
 globs: "**/*.{js,ts,py,go}"
+language: "typescript"
+framework: "react"
+project_type: "web-application"
 ---
+{{template "components/header" .}}
 
-# Code Review Guidelines
+# {{.Language}} {{.Framework}} Standards
 
-When reviewing code, focus on:
+{{template "components/guidelines" .}}
 
 {{if eq .Target "claude"}}
-Arguments: $ARGUMENTS
-{{end}}
-
-- Code clarity and readability
+When reviewing code, focus on:
+- Type safety and interfaces
 - Performance considerations  
 - Security best practices
-- Test coverage
+{{end}}
 ` + "```" + `
 
 ### 2. Compile Rules
@@ -253,17 +270,25 @@ airuler update                                    # Update vendors
 - ` + "`airuler install`" + ` - Install compiled rules to AI tools  
 - ` + "`airuler fetch`" + ` - Fetch external rule repositories
 - ` + "`airuler update`" + ` - Update vendor repositories
-- ` + "`airuler vendors`" + ` - Manage vendor inclusion/exclusion
+- ` + "`airuler vendors list`" + ` - List available vendors
+- ` + "`airuler vendors config`" + ` - View vendor configurations
 
 ## Configuration
 
-Edit ` + "`airuler.yaml`" + ` to configure which vendors to include:
+Edit ` + "`airuler.yaml`" + ` to configure vendors and overrides:
 
 ` + "```" + `yaml
 defaults:
-  include_vendors:
-    - vendor-name    # Include specific vendor
-    - "*"           # Include all vendors
+  include_vendors: ["*"]  # Include all vendors
+
+# Override vendor settings (optional)
+vendor_overrides:
+  vendor-name:
+    template_defaults:
+      project_type: "mobile-app"
+    targets:
+      claude:
+        default_mode: "command"
 ` + "```" + `
 
 For more detailed documentation, visit the [airuler repository](https://github.com/Ratler/airuler/).
@@ -272,29 +297,134 @@ For more detailed documentation, visit the [airuler repository](https://github.c
 		return fmt.Errorf("failed to write README.md file: %w", err)
 	}
 
-	// Create example template
-	exampleTemplate := `# {{.Name}} Rule
-
-{{if eq .Target "cursor"}}---
-description: {{.Description}}
-globs: {{.Globs}}
-alwaysApply: true
+	// Create modern example template
+	exampleTemplate := `---
+claude_mode: both
+description: "Modern coding standards with reusable components"
+globs: "**/*.{js,ts,jsx,tsx,py,go}"
+language: "typescript"
+framework: "react"
+project_type: "web-application"
+tags: ["frontend", "backend", "standards"]
+custom:
+  min_version: "18.0.0"
+  build_tool: "vite"
 ---
+{{template "components/header" .}}
+
+# {{.Language}} {{.Framework}} Coding Standards
+
+This template demonstrates modern airuler features including:
+- Vendor configuration defaults
+- Reusable components with .ptmpl files
+- Rich YAML front matter
+- Target-specific compilation
+
+{{template "components/guidelines" .}}
+
+{{if eq .Target "claude"}}
+## Code Review Checklist
+When reviewing {{.Language}} code:
+1. ✅ Check type safety and interfaces
+2. ✅ Verify error handling patterns
+3. ✅ Ensure performance considerations
+4. ✅ Validate security practices
 {{end}}
 
-This is an example rule template for {{.Target}}.
+{{template "components/footer" .}}`
 
-{{if eq .Target "claude"}}Arguments: $ARGUMENTS{{end}}
-
-## Guidelines
-
-- Follow coding best practices
-- Write clean, readable code
-- Include proper error handling`
-
-	examplePath := filepath.Join("templates", "examples", "example.tmpl")
+	examplePath := filepath.Join("templates", "examples", "modern-example.tmpl")
 	if err := os.WriteFile(examplePath, []byte(exampleTemplate), 0600); err != nil {
 		return fmt.Errorf("failed to write example template: %w", err)
+	}
+
+	// Create example component templates (.ptmpl)
+	headerComponent := `---
+description: "Standard header component"
+---
+## {{.Name}} - {{.Target}} Target
+
+**Project**: {{.ProjectType}} | **Language**: {{.Language}} | **Framework**: {{.Framework}}
+{{if .Custom.build_tool}}**Build Tool**: {{.Custom.build_tool}}{{end}}
+
+Generated for {{.Target}} on {{/* Date would go here */}}
+
+---`
+
+	headerPath := filepath.Join("templates", "components", "header.ptmpl")
+	if err := os.WriteFile(headerPath, []byte(headerComponent), 0600); err != nil {
+		return fmt.Errorf("failed to write header component: %w", err)
+	}
+
+	guidelinesComponent := `---
+description: "Reusable coding guidelines component"
+---
+## Core Guidelines
+
+### Code Quality
+- Write clean, readable code
+- Use meaningful variable and function names
+- Follow consistent formatting and style
+- Implement proper error handling
+
+### {{.Language}} Specific
+{{if eq .Language "typescript"}}
+- Use strict TypeScript configuration
+- Define interfaces for all object shapes
+- Avoid \"any\" type - use proper typing
+- Implement proper error boundaries
+{{else if eq .Language "python"}}
+- Follow PEP 8 style guidelines
+- Use type hints for function signatures
+- Write docstrings for all functions
+- Use virtual environments
+{{else}}
+- Follow language-specific best practices
+- Use established conventions and patterns
+{{end}}
+
+### Testing
+- Write unit tests for all business logic
+- Aim for high test coverage (>80%)
+- Include integration tests for critical paths
+- Test edge cases and error conditions
+
+{{if contains .Tags "frontend"}}
+### Frontend Specific
+- Ensure accessibility (WCAG compliance)
+- Optimize for performance (Core Web Vitals)
+- Implement responsive design
+- Handle loading and error states
+{{end}}`
+
+	guidelinesPath := filepath.Join("templates", "components", "guidelines.ptmpl")
+	if err := os.WriteFile(guidelinesPath, []byte(guidelinesComponent), 0600); err != nil {
+		return fmt.Errorf("failed to write guidelines component: %w", err)
+	}
+
+	footerComponent := `---
+description: "Standard footer component"
+---
+
+---
+
+## Additional Resources
+
+{{if .Custom.style_guide_url}}
+- [Style Guide]({{.Custom.style_guide_url}})
+{{end}}
+{{if .Documentation}}
+- [Documentation]({{.Documentation}})
+{{end}}
+{{if .Custom.support_email}}
+- Support: {{.Custom.support_email}}
+{{end}}
+
+*This rule was generated by airuler for {{.Target}}*`
+
+	footerPath := filepath.Join("templates", "components", "footer.ptmpl")
+	if err := os.WriteFile(footerPath, []byte(footerComponent), 0600); err != nil {
+		return fmt.Errorf("failed to write footer component: %w", err)
 	}
 
 	// Ask user if they want to initialize git repository (skip in test mode)
@@ -322,6 +452,9 @@ This is an example rule template for {{.Target}}.
 	fmt.Println("  📄 .gitignore")
 	fmt.Println("  📄 README.md")
 	fmt.Printf("  📄 %s\n", examplePath)
+	fmt.Printf("  📄 %s\n", headerPath)
+	fmt.Printf("  📄 %s\n", guidelinesPath)
+	fmt.Printf("  📄 %s\n", footerPath)
 
 	fmt.Println("\nNext steps:")
 	if targetPath != "." {
@@ -347,11 +480,38 @@ This is an example rule template for {{.Target}}.
 }
 
 // askYesNo prompts the user for a yes/no question and returns true for yes
+// If stdin is not available for interactive input (common in automated environments),
+// it defaults to 'no' to avoid hanging the program
 func askYesNo(prompt string) bool {
+	// Check if we have a proper terminal for interactive input
+	fileInfo, err := os.Stdin.Stat()
+	if err != nil {
+		fmt.Printf("Warning: Cannot check stdin availability: %v. Defaulting to 'no'.\n", err)
+		return false
+	}
+
+	// If stdin is not a character device (e.g., piped input), handle it differently
+	if (fileInfo.Mode() & os.ModeCharDevice) == 0 {
+		// We have piped input, try to read it
+		reader := bufio.NewReader(os.Stdin)
+		fmt.Print(prompt + " ")
+		response, err := reader.ReadString('\n')
+		if err != nil {
+			fmt.Printf("Warning: Could not read piped input: %v. Defaulting to 'no'.\n", err)
+			return false
+		}
+		response = strings.TrimSpace(strings.ToLower(response))
+		return response == "y" || response == "yes"
+	}
+
+	// We have a terminal, try interactive input
 	fmt.Print(prompt + " ")
 	reader := bufio.NewReader(os.Stdin)
 	response, err := reader.ReadString('\n')
 	if err != nil {
+		// Handle EOF or other stdin errors gracefully
+		fmt.Printf("\nWarning: No input available (stdin closed). Defaulting to 'no'.\n")
+		fmt.Println("Hint: Run 'airuler init' in a proper terminal for interactive prompts.")
 		return false
 	}
 

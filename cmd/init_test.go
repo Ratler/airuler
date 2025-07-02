@@ -36,7 +36,7 @@ func TestInitProject(t *testing.T) {
 
 	// Check that required files and directories were created
 	expectedPaths := []string{
-		"templates/partials",
+		"templates/components",
 		"templates/examples",
 		"vendors",
 		"compiled/cursor",
@@ -46,7 +46,10 @@ func TestInitProject(t *testing.T) {
 		"airuler.yaml",
 		"airuler.lock",
 		".gitignore",
-		"templates/examples/example.tmpl",
+		"templates/examples/modern-example.tmpl",
+		"templates/components/header.ptmpl",
+		"templates/components/guidelines.ptmpl",
+		"templates/components/footer.ptmpl",
 	}
 
 	for _, path := range expectedPaths {
@@ -64,6 +67,8 @@ func TestInitProject(t *testing.T) {
 	configStr := string(configContent)
 	expectedConfigParts := []string{
 		"defaults:",
+		"include_vendors:",
+		"vendor_overrides:",
 	}
 
 	for _, part := range expectedConfigParts {
@@ -168,7 +173,7 @@ func TestInitProjectFilePermissions(t *testing.T) {
 		{"compiled", 0755, true},
 		{"airuler.yaml", 0600, false},
 		{"airuler.lock", 0600, false},
-		{"templates/examples/example.tmpl", 0600, false},
+		{"templates/examples/modern-example.tmpl", 0600, false},
 	}
 
 	for _, test := range fileTests {

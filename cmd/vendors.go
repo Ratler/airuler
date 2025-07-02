@@ -6,6 +6,7 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/ratler/airuler/internal/config"
 	"github.com/ratler/airuler/internal/vendor"
@@ -113,6 +114,16 @@ var vendorsExcludeAllCmd = &cobra.Command{
 	},
 }
 
+var vendorsConfigCmd = &cobra.Command{
+	Use:   "config [vendor]",
+	Short: "View vendor configurations",
+	Long:  `View vendor configurations. If no vendor is specified, shows all vendor configs.`,
+	Args:  cobra.MaximumNArgs(1),
+	RunE: func(_ *cobra.Command, args []string) error {
+		return showVendorConfigs(args)
+	},
+}
+
 func init() {
 	rootCmd.AddCommand(vendorsCmd)
 
@@ -124,6 +135,7 @@ func init() {
 	vendorsCmd.AddCommand(vendorsExcludeCmd)
 	vendorsCmd.AddCommand(vendorsIncludeAllCmd)
 	vendorsCmd.AddCommand(vendorsExcludeAllCmd)
+	vendorsCmd.AddCommand(vendorsConfigCmd)
 }
 
 func createVendorManager() (*vendor.Manager, error) {
@@ -228,4 +240,117 @@ func setIncludeVendorsAll(includeAll bool) error {
 	}
 
 	return saveProjectConfig(cfg)
+}
+
+// showVendorConfigs displays vendor configurations
+func showVendorConfigs(args []string) error {
+	// Get current working directory
+	currentDir, err := os.Getwd()
+	if err != nil {
+		return fmt.Errorf("failed to get current directory: %w", err)
+	}
+
+	// Load project configuration
+	projectConfig, err := loadProjectConfig()
+	if err != nil {
+		return fmt.Errorf("failed to load project config: %w", err)
+	}
+
+	// Load vendor configurations
+	vendorConfigs, err := config.LoadVendorConfigs(currentDir, projectConfig)
+	if err != nil {
+		return fmt.Errorf("failed to load vendor configurations: %w", err)
+	}
+
+	if len(args) == 0 {
+		// Show all vendor configurations
+		fmt.Println("📦 Vendor Configurations")
+		fmt.Println("========================")
+
+		if len(vendorConfigs.VendorConfigs) == 0 {
+			fmt.Println("No vendor configurations found.")
+			return nil
+		}
+
+		for vendorName, vendorConfig := range vendorConfigs.VendorConfigs {
+			fmt.Printf("\n🏷️  %s\n", vendorName)
+			fmt.Printf("   %-20s %s\n", "Name:", getStringOrDefault(vendorConfig.Vendor.Name, vendorName))
+			fmt.Printf("   %-20s %s\n", "Description:", getStringOrDefault(vendorConfig.Vendor.Description, "No description"))
+			fmt.Printf("   %-20s %s\n", "Version:", getStringOrDefault(vendorConfig.Vendor.Version, "Unknown"))
+
+			if len(vendorConfig.TemplateDefaults) > 0 {
+				fmt.Printf("   %-20s %d defaults\n", "Template Defaults:", len(vendorConfig.TemplateDefaults))
+			}
+			if len(vendorConfig.Variables) > 0 {
+				fmt.Printf("   %-20s %d variables\n", "Variables:", len(vendorConfig.Variables))
+			}
+			if len(vendorConfig.Targets) > 0 {
+				fmt.Printf("   %-20s %v\n", "Target Configs:", getVendorTargetNames(vendorConfig.Targets))
+			}
+		}
+	} else {
+		// Show specific vendor configuration
+		vendorName := args[0]
+		vendorConfig, exists := vendorConfigs.VendorConfigs[vendorName]
+		if !exists {
+			return fmt.Errorf("vendor '%s' not found", vendorName)
+		}
+
+		fmt.Printf("📦 Vendor Configuration: %s\n", vendorName)
+		fmt.Println("=" + strings.Repeat("=", len(vendorName)+25))
+
+		// Vendor manifest
+		fmt.Println("\n🏷️  Vendor Information:")
+		fmt.Printf("   Name:        %s\n", getStringOrDefault(vendorConfig.Vendor.Name, vendorName))
+		fmt.Printf("   Description: %s\n", getStringOrDefault(vendorConfig.Vendor.Description, "No description"))
+		fmt.Printf("   Version:     %s\n", getStringOrDefault(vendorConfig.Vendor.Version, "Unknown"))
+		fmt.Printf("   Author:      %s\n", getStringOrDefault(vendorConfig.Vendor.Author, "Unknown"))
+		fmt.Printf("   Homepage:    %s\n", getStringOrDefault(vendorConfig.Vendor.Homepage, "None"))
+
+		// Template defaults
+		if len(vendorConfig.TemplateDefaults) > 0 {
+			fmt.Println("\n⚙️  Template Defaults:")
+			for key, value := range vendorConfig.TemplateDefaults {
+				fmt.Printf("   %-15s %v\n", key+":", value)
+			}
+		}
+
+		// Variables
+		if len(vendorConfig.Variables) > 0 {
+			fmt.Println("\n🔧 Variables:")
+			for key, value := range vendorConfig.Variables {
+				fmt.Printf("   %-15s %v\n", key+":", value)
+			}
+		}
+
+		// Target configurations
+		if len(vendorConfig.Targets) > 0 {
+			fmt.Println("\n🎯 Target Configurations:")
+			for target, targetConfig := range vendorConfig.Targets {
+				fmt.Printf("   %s:\n", target)
+				if targetConfig.DefaultMode != "" {
+					fmt.Printf("     %-18s %s\n", "Default Mode:", targetConfig.DefaultMode)
+				}
+			}
+		}
+
+		// Compilation settings section removed - no active compilation config fields
+	}
+
+	return nil
+}
+
+func getStringOrDefault(value, defaultValue string) string {
+	if value == "" {
+		return defaultValue
+	}
+	return value
+}
+
+func getVendorTargetNames(targets map[string]config.TargetConfig) []string {
+	var names []string
+	for target := range targets {
+		names = append(names, target)
+	}
+	return names
 }

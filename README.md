@@ -9,8 +9,9 @@ A Go-based CLI tool that compiles AI rule templates into target-specific formats
 - 🔄 **Template inheritance**: Support for template partials and reusable components
 - 💾 **Safe installation**: Automatic backup of existing rules and installation tracking
 - 🔍 **Watch mode**: Auto-compile templates during development
-- ⚙️ **Flexible configuration**: YAML-based configuration with lock files
+- ⚙️ **Flexible configuration**: YAML-based configuration with vendor-specific settings
 - 🧠 **Claude Code modes**: Memory (persistent) and command (on-demand) installation modes
+- 🎛️ **Vendor configuration**: Per-vendor defaults, variables, and compilation settings
 
 ## Installation
 
@@ -135,6 +136,7 @@ airuler uninstall               # Remove installed templates
 airuler fetch <url>             # Add external templates
 airuler update                  # Update vendors
 airuler vendors list            # List vendors
+airuler vendors config          # View vendor configurations
 
 # Configuration
 airuler config init             # Initialize global config

@@ -70,6 +70,10 @@ airuler vendors status
 
 # Check for vendor updates
 airuler vendors check
+
+# View vendor configurations
+airuler vendors config                    # Show all vendor configs
+airuler vendors config frontend-vendor    # Show specific vendor config
 ```
 
 ### Include/Exclude Vendors
@@ -156,10 +160,40 @@ defaults:
 
 ### Vendor-Specific Configuration
 
-Each vendor can have its own `airuler.yaml` with:
-- Default compilation settings
-- Vendor-specific metadata
-- Template organization preferences
+Each vendor can have its own `airuler.yaml` with vendor-specific settings that apply to their templates:
+
+```yaml
+# vendors/frontend-standards/airuler.yaml
+vendor:
+  name: "Frontend Standards"
+  description: "React/TypeScript coding standards"
+  version: "2.1.0"
+  author: "Frontend Team"
+  homepage: "https://company.com/standards"
+
+template_defaults:
+  language: "typescript"
+  framework: "react"
+  project_type: "web-application"
+  custom:
+    min_node_version: "18.0.0"
+    build_tool: "vite"
+
+targets:
+  claude:
+    default_mode: "memory"    # Default mode for Claude templates
+
+variables:
+  company_name: "Acme Corp"
+  style_guide_url: "https://company.com/style-guide"
+  support_email: "frontend-team@company.com"
+```
+
+**How Vendor Configuration Works:**
+- Vendor defaults are applied to templates from that vendor
+- Template front matter can override vendor defaults
+- Project configuration can override vendor settings via `vendor_overrides`
+- Each vendor's templates only use their own configuration
 
 ## Lock File Management
 

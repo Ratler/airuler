@@ -51,6 +51,18 @@ defaults:
   # Or specify specific vendors:
   # include_vendors: [frontend, security]
   last_template_dir: "/path/to/templates"  # Auto-managed template directory
+
+# Vendor-specific overrides (optional)
+vendor_overrides:
+  frontend-vendor:
+    template_defaults:
+      project_type: "mobile-app"  # Override vendor's default
+    targets:
+      claude:
+        default_mode: "command"   # Override vendor's preference
+  security-vendor:
+    template_defaults:
+      language: "typescript"      # Override vendor's default language
 ```
 
 ### Configuration Options
@@ -59,6 +71,7 @@ defaults:
 |---------|-------------|---------|---------|
 | `include_vendors` | Vendors to include in compilation | `["*"]` | `["frontend", "security"]` |
 | `last_template_dir` | Remembered template directory | auto-detected | `"/home/user/templates"` |
+| `vendor_overrides` | Per-vendor configuration overrides | `{}` | See example above |
 
 ### Project-Specific Configuration
 
@@ -303,7 +316,6 @@ targets:
 
 ```yaml
 templates:
-  strict_mode: true          # Fail on undefined variables
   trim_whitespace: true      # Remove extra whitespace
   include_metadata: false    # Include front matter in output
   
