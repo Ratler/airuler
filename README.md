@@ -6,7 +6,7 @@ A Go-based CLI tool that compiles AI rule templates into target-specific formats
 
 - 🎯 **Multi-target compilation**: Generate rules for Cursor, Claude Code, Cline, GitHub Copilot, and Roo Code
 - 📦 **Vendor management**: Fetch and manage rule templates from Git repositories  
-- 🔄 **Template inheritance**: Support for template partials
+- 🔄 **Template inheritance**: Support for template partials (.tmpl in partials/ dirs and .ptmpl files anywhere)
 - 💾 **Safe installation**: Automatic backup of existing rules
 - 🔍 **Watch mode**: Auto-compile templates during development
 - ⚙️ **Flexible configuration**: YAML-based configuration with lock files
@@ -343,36 +343,68 @@ Frontend-specific guidelines
 
 ### Partials and Template Inheritance
 
-Include reusable components using partials. **Important**: Partials must be placed in a `partials/` subdirectory.
+Include reusable components using partials. Airuler supports two ways to organize partials:
+
+#### Traditional Partials Directory
+Place `.tmpl` files in any `partials/` subdirectory:
+
+```
+templates/
+└── partials/
+    ├── header.tmpl
+    └── footer.tmpl
+```
+
+#### Flexible .ptmpl Files 🆕
+Use `.ptmpl` extension for partials that can be organized anywhere in your template structure:
+
+```
+templates/
+├── components/
+│   ├── auth.ptmpl
+│   └── ui/
+│       └── button.ptmpl
+├── layouts/
+│   └── base.ptmpl
+└── shared.ptmpl
+```
+
+#### Using Partials
 
 Main template (`templates/main.tmpl`):
 ```go
-{{template "partials/header" .}}
+{{template "partials/header" .}}              <!-- Traditional partial -->
+{{template "components/auth" .}}              <!-- .ptmpl from components/ -->
+{{template "layouts/base" .}}                 <!-- .ptmpl from layouts/ -->
 
 # Main content here
 
 {{template "partials/footer" .}}
 ```
 
-Partial file (`templates/partials/header.tmpl`):
+Partial file example (`templates/components/security.ptmpl`):
 ```yaml
 ---
-description: "Common header for all rules"
+description: "Security checklist component"
 ---
-# {{.Name}}
-{{if .ProjectType}}
-Generated for {{.Target}} on {{.ProjectType}} project
+### Security Checklist
+{{if eq .ProjectType "api"}}
+- [ ] Authentication implemented
+- [ ] Rate limiting configured
+- [ ] Input validation on all endpoints
 {{else}}
-Generated for {{.Target}}
+- [ ] General security practices followed
 {{end}}
 ```
 
 **Important Notes**:
-- Partials are referenced by their relative path from templates directory (e.g., `partials/header`)
-- **Always include the dot (`.`) parameter** when calling templates: `{{template "partials/header" .}}`
+- `.ptmpl` files are always treated as partials and never compiled as main templates
+- Partials are referenced by their path relative to templates directory without extension
+- **Always include the dot (`.`) parameter** when calling templates: `{{template "components/auth" .}}`
   - The dot passes the current data context (variables like `.Language`, `.Target`, etc.) to the partial
   - Without the dot, partials won't have access to template variables and conditionals will fail
 - All template variables from the main template are available in partials when the dot is included
+- Both `.tmpl` files in `partials/` directories and `.ptmpl` files anywhere are treated as partials
 - Partials can have YAML front matter, but it's stripped during compilation
 
 ## Claude Code Installation Modes 🆕

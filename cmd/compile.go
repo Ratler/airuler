@@ -54,6 +54,11 @@ var compileCmd = &cobra.Command{
 
 Available targets: %s
 
+Template files:
+  - .tmpl files are compiled as main templates
+  - .ptmpl files are treated as partials (can be organized anywhere)
+  - Files in partials/ directories are also treated as partials
+
 Examples:
   airuler compile                    # Compile for all targets
   airuler compile cursor             # Compile only for Cursor
@@ -164,11 +169,16 @@ func compileTemplates(targets []compiler.Target) error {
 		targetComp := compiler.NewCompiler()
 
 		// First, load all partials into the compiler so they're available for inclusion
+		if viper.GetBool("verbose") && len(partials) > 0 {
+			fmt.Printf("Loading %d partials...\n", len(partials))
+		}
 		for partialName, partialContent := range partials {
 			// Strip front matter from partial content before loading
 			cleanPartialContent := stripTemplateFrontMatter(partialContent)
 			if err := targetComp.LoadTemplate(partialName, cleanPartialContent); err != nil {
 				fmt.Printf("Warning: failed to load partial %s: %v\n", partialName, err)
+			} else if viper.GetBool("verbose") {
+				fmt.Printf("  ✓ Loaded partial: %s\n", partialName)
 			}
 		}
 
@@ -299,7 +309,8 @@ func loadTemplatesFromDirs(dirs []string) (map[string]TemplateSource, map[string
 				return nil
 			}
 
-			if filepath.Ext(path) != ".tmpl" {
+			ext := filepath.Ext(path)
+			if ext != ".tmpl" && ext != ".ptmpl" {
 				return nil
 			}
 
@@ -314,11 +325,14 @@ func loadTemplatesFromDirs(dirs []string) (map[string]TemplateSource, map[string
 				return err
 			}
 
-			name := strings.TrimSuffix(relPath, ".tmpl")
+			// Remove extension to get the template name
+			name := strings.TrimSuffix(relPath, ext)
 
-			// Check if this is a partial (in partials/ directory)
+			// Check if this is a partial:
+			// 1. Files with .ptmpl extension are always partials
+			// 2. Files in partials/ directory are partials (backward compatibility)
 			pathParts := strings.Split(filepath.ToSlash(relPath), "/")
-			isPartial := slices.Contains(pathParts, "partials")
+			isPartial := ext == ".ptmpl" || slices.Contains(pathParts, "partials")
 
 			if isPartial {
 				partials[name] = string(content)

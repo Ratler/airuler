@@ -1,0 +1,50 @@
+---
+description: Example template demonstrating .ptmpl partials usage
+language: go
+project_type: api
+framework: gin
+tags:
+  - backend
+  - rest-api
+---
+{{template "partials/header" .}}
+
+This template demonstrates how to use the new .ptmpl partial files that can be organized anywhere in your template structure.
+
+## Using Partials from Different Locations
+
+### Traditional Partial (from partials/ directory)
+{{template "partials/common-guidelines" .}}
+
+### New .ptmpl Partials (from anywhere)
+{{template "components/security-checklist" .}}
+
+{{template "partials/code-review" .}}
+
+## Benefits of .ptmpl Files
+
+1. **Flexible Organization**: Place partial templates anywhere in your directory structure
+2. **Clear Intent**: The .ptmpl extension makes it obvious which files are partials
+3. **Scalability**: As your template library grows, organize partials by feature or domain
+4. **Backward Compatible**: Existing partials/ directory still works
+
+## Example Directory Structure
+
+```
+templates/
+├── main-template.tmpl
+├── partials/              # Traditional partials location
+│   ├── header.tmpl
+│   └── footer.tmpl
+├── components/            # Organized by feature
+│   ├── auth.ptmpl
+│   ├── security-checklist.ptmpl
+│   └── ui/
+│       ├── button.ptmpl
+│       └── forms.ptmpl
+└── layouts/               # Layout partials
+    ├── base.ptmpl
+    └── sidebar.ptmpl
+```
+
+{{template "partials/footer" .}}

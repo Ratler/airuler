@@ -1,0 +1,35 @@
+### Security Checklist
+
+{{if eq .ProjectType "web"}}
+#### Web Application Security
+- [ ] Input validation and sanitization
+- [ ] SQL injection prevention
+- [ ] XSS (Cross-Site Scripting) protection
+- [ ] CSRF (Cross-Site Request Forgery) tokens
+- [ ] Secure session management
+- [ ] HTTPS enforcement
+- [ ] Content Security Policy headers
+{{else if eq .ProjectType "api"}}
+#### API Security
+- [ ] Authentication and authorization
+- [ ] Rate limiting implemented
+- [ ] Input validation on all endpoints
+- [ ] Secure API key management
+- [ ] CORS properly configured
+- [ ] Request/response encryption
+- [ ] API versioning strategy
+{{else}}
+#### General Security
+- [ ] Secure credential storage
+- [ ] Input validation
+- [ ] Proper error handling (no sensitive data in errors)
+- [ ] Audit logging
+- [ ] Dependency vulnerability scanning
+{{end}}
+
+{{if .Framework}}
+#### {{.Framework}}-specific Security
+- [ ] Framework security best practices followed
+- [ ] Security middleware properly configured
+- [ ] Framework-specific vulnerabilities addressed
+{{end}}

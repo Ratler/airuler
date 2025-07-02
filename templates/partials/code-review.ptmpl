@@ -1,0 +1,28 @@
+## Code Review Guidelines
+
+When reviewing code:
+- Check for potential bugs and edge cases
+- Ensure proper error handling
+- Verify adherence to {{if .Language}}{{.Language}}{{else}}language{{end}} best practices
+- Look for opportunities to improve readability
+- Confirm test coverage is adequate
+
+{{if eq .Language "go"}}
+### Go-specific Review Points
+- Verify error handling follows Go conventions
+- Check for proper use of defer statements
+- Ensure goroutines are properly managed
+- Confirm interfaces are used appropriately
+{{else if eq .Language "python"}}
+### Python-specific Review Points
+- Check PEP 8 compliance
+- Verify proper use of type hints
+- Look for pythonic idioms
+- Ensure exception handling is appropriate
+{{else if eq .Language "javascript"}}
+### JavaScript-specific Review Points
+- Check for async/await best practices
+- Verify proper error handling in promises
+- Look for potential memory leaks
+- Ensure proper use of const/let
+{{end}}

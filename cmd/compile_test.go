@@ -329,6 +329,135 @@ This is a test rule for {{.Target}}.`
 	}
 }
 
+func TestLoadTemplatesWithPtmplFiles(t *testing.T) {
+	// Create temporary directory structure
+	tempDir := t.TempDir()
+	templatesDir := filepath.Join(tempDir, "templates")
+
+	// Create various directory structures for .ptmpl files
+	dirs := []string{
+		templatesDir,
+		filepath.Join(templatesDir, "components"),
+		filepath.Join(templatesDir, "components", "ui"),
+		filepath.Join(templatesDir, "layouts"),
+		filepath.Join(templatesDir, "partials"), // Also test traditional partials dir
+	}
+
+	for _, dir := range dirs {
+		if err := os.MkdirAll(dir, 0755); err != nil {
+			t.Fatalf("Failed to create directory %s: %v", dir, err)
+		}
+	}
+
+	// Create test files
+	testFiles := map[string]struct {
+		content   string
+		isPartial bool
+	}{
+		// Regular templates (.tmpl)
+		"main.tmpl": {
+			content:   "Main template: {{template \"components/button\" .}}",
+			isPartial: false,
+		},
+		"page.tmpl": {
+			content:   "Page template: {{template \"layouts/header\" .}}",
+			isPartial: false,
+		},
+		// New .ptmpl files (should all be treated as partials)
+		"components/button.ptmpl": {
+			content:   "<button>{{.ButtonText}}</button>",
+			isPartial: true,
+		},
+		"components/ui/card.ptmpl": {
+			content:   "<div class=\"card\">{{.CardContent}}</div>",
+			isPartial: true,
+		},
+		"layouts/header.ptmpl": {
+			content:   "<header>{{.Title}}</header>",
+			isPartial: true,
+		},
+		// Traditional partials (in partials/ directory)
+		"partials/footer.tmpl": {
+			content:   "<footer>{{.Copyright}}</footer>",
+			isPartial: true,
+		},
+		// .ptmpl file in root (should still be partial)
+		"shared.ptmpl": {
+			content:   "Shared content: {{.SharedData}}",
+			isPartial: true,
+		},
+	}
+
+	// Create all test files
+	for path, file := range testFiles {
+		fullPath := filepath.Join(templatesDir, path)
+		if err := os.WriteFile(fullPath, []byte(file.content), 0644); err != nil {
+			t.Fatalf("Failed to write file %s: %v", path, err)
+		}
+	}
+
+	// Load templates
+	templates, partials, err := loadTemplatesFromDirs([]string{templatesDir})
+	if err != nil {
+		t.Errorf("loadTemplatesFromDirs() failed: %v", err)
+	}
+
+	// Verify main templates
+	expectedTemplates := []string{"main", "page"}
+	if len(templates) != len(expectedTemplates) {
+		t.Errorf("Expected %d main templates, got %d", len(expectedTemplates), len(templates))
+	}
+
+	for _, name := range expectedTemplates {
+		if _, exists := templates[name]; !exists {
+			t.Errorf("Expected main template %s not found", name)
+		}
+	}
+
+	// Verify partials
+	expectedPartials := []string{
+		"components/button",  // .ptmpl without extension
+		"components/ui/card", // nested .ptmpl
+		"layouts/header",     // .ptmpl in different dir
+		"partials/footer",    // traditional partial
+		"shared",             // root-level .ptmpl
+	}
+
+	if len(partials) != len(expectedPartials) {
+		t.Errorf("Expected %d partials, got %d", len(expectedPartials), len(partials))
+		t.Errorf("Partials found: %v", getMapKeys(partials))
+	}
+
+	for _, name := range expectedPartials {
+		if _, exists := partials[name]; !exists {
+			t.Errorf("Expected partial %s not found", name)
+		}
+	}
+
+	// Verify that .ptmpl files are NOT in main templates
+	ptmplInTemplates := []string{
+		"components/button",
+		"components/ui/card",
+		"layouts/header",
+		"shared",
+	}
+
+	for _, name := range ptmplInTemplates {
+		if _, exists := templates[name]; exists {
+			t.Errorf(".ptmpl file %s should not be in main templates", name)
+		}
+	}
+}
+
+// Helper function to get map keys for debugging
+func getMapKeys(m map[string]string) []string {
+	keys := make([]string, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+	return keys
+}
+
 func TestParseTemplateFrontMatter(t *testing.T) {
 	tests := []struct {
 		name     string
