@@ -130,7 +130,7 @@ func compileTemplates(targets []compiler.Target) error {
 	}
 
 	// Load templates and partials from all directories
-	templates, partials, err := loadTemplatesFromDirs(templateDirs)
+	templates, partialsBySource, err := loadTemplatesFromDirs(templateDirs)
 	if err != nil {
 		return err
 	}
@@ -165,28 +165,29 @@ func compileTemplates(targets []compiler.Target) error {
 			return fmt.Errorf("failed to create target directory %s: %w", targetDir, err)
 		}
 
-		// Create a fresh compiler for each target to avoid template conflicts
-		targetComp := compiler.NewCompiler()
-
-		// First, load all partials into the compiler so they're available for inclusion
-		if viper.GetBool("verbose") && len(partials) > 0 {
-			fmt.Printf("Loading %d partials...\n", len(partials))
-		}
-		for partialName, partialContent := range partials {
-			// Strip front matter from partial content before loading
-			cleanPartialContent := stripTemplateFrontMatter(partialContent)
-			if err := targetComp.LoadTemplate(partialName, cleanPartialContent); err != nil {
-				fmt.Printf("Warning: failed to load partial %s: %v\n", partialName, err)
-			} else if viper.GetBool("verbose") {
-				fmt.Printf("  ✓ Loaded partial: %s\n", partialName)
-			}
-		}
-
 		// Collect memory mode content to handle appending to CLAUDE.md
 		memoryModeContent := []string{}
 
-		// Now compile main templates (partials are available for inclusion)
+		// Now compile main templates (load source-specific partials for each template)
 		for templateName, templateSource := range templates {
+			// Create a fresh compiler for each template to ensure isolation
+			templateComp := compiler.NewCompiler()
+
+			// Load only partials from the same source as this template
+			if sourcePartials, exists := partialsBySource[templateSource.SourceType]; exists {
+				if viper.GetBool("verbose") && len(sourcePartials) > 0 {
+					fmt.Printf("Loading %d partials for %s template %s...\n", len(sourcePartials), templateSource.SourceType, templateName)
+				}
+				for partialName, partialContent := range sourcePartials {
+					// Strip front matter from partial content before loading
+					cleanPartialContent := stripTemplateFrontMatter(partialContent)
+					if err := templateComp.LoadTemplate(partialName, cleanPartialContent); err != nil {
+						fmt.Printf("Warning: failed to load partial %s: %v\n", partialName, err)
+					} else if viper.GetBool("verbose") {
+						fmt.Printf("  ✓ Loaded partial: %s\n", partialName)
+					}
+				}
+			}
 			// Parse front matter to get template metadata
 			frontMatter, err := parseTemplateFrontMatter(templateSource.Content)
 			if err != nil {
@@ -223,12 +224,12 @@ func compileTemplates(targets []compiler.Target) error {
 			}
 
 			// Load the clean template content (without front matter)
-			if err := targetComp.LoadTemplate(templateName, cleanTemplateContent); err != nil {
+			if err := templateComp.LoadTemplate(templateName, cleanTemplateContent); err != nil {
 				fmt.Printf("Warning: failed to load template %s: %v\n", templateName, err)
 				continue
 			}
 
-			rules, err := targetComp.CompileTemplateWithModes(templateName, target, data)
+			rules, err := templateComp.CompileTemplateWithModes(templateName, target, data)
 			if err != nil {
 				fmt.Printf("Warning: failed to compile %s for %s: %v\n", templateName, target, err)
 				continue
@@ -245,7 +246,7 @@ func compileTemplates(targets []compiler.Target) error {
 					fmt.Printf("  ✅ %s (memory) -> CLAUDE.md (queued)\n", displayName)
 				} else {
 					// Regular file writing for non-memory mode
-					outputPath := targetComp.GetOutputPath(target, rule.Filename)
+					outputPath := templateComp.GetOutputPath(target, rule.Filename)
 					if err := os.WriteFile(outputPath, []byte(rule.Content), 0600); err != nil {
 						return fmt.Errorf("failed to write %s: %w", outputPath, err)
 					}
@@ -262,7 +263,9 @@ func compileTemplates(targets []compiler.Target) error {
 
 		// Write all collected memory mode content to CLAUDE.md
 		if target == compiler.TargetClaude && len(memoryModeContent) > 0 {
-			claudeMdPath := targetComp.GetOutputPath(target, "CLAUDE.md")
+			// Create a compiler instance just for getting the output path
+			outputComp := compiler.NewCompiler()
+			claudeMdPath := outputComp.GetOutputPath(target, "CLAUDE.md")
 			// Use clear section separators that Claude will understand
 			separator := "\n\n<!-- ==================== NEXT RULE SECTION ==================== -->\n\n"
 			combinedContent := strings.Join(memoryModeContent, separator)
@@ -277,10 +280,10 @@ func compileTemplates(targets []compiler.Target) error {
 	return nil
 }
 
-func loadTemplatesFromDirs(dirs []string) (map[string]TemplateSource, map[string]string, error) {
-	templates := make(map[string]TemplateSource)   // Main templates to compile individually
-	partials := make(map[string]string)            // Partials to load for inclusion only
-	conflicts := make(map[string][]TemplateSource) // Track conflicts for reporting
+func loadTemplatesFromDirs(dirs []string) (map[string]TemplateSource, map[string]map[string]string, error) {
+	templates := make(map[string]TemplateSource)           // Main templates to compile individually
+	partialsBySource := make(map[string]map[string]string) // Partials organized by source
+	conflicts := make(map[string][]TemplateSource)         // Track conflicts for reporting
 
 	for _, dir := range dirs {
 		if _, err := os.Stat(dir); os.IsNotExist(err) {
@@ -335,7 +338,11 @@ func loadTemplatesFromDirs(dirs []string) (map[string]TemplateSource, map[string
 			isPartial := ext == ".ptmpl" || slices.Contains(pathParts, "partials")
 
 			if isPartial {
-				partials[name] = string(content)
+				// Initialize partials map for this source if not exists
+				if partialsBySource[sourceType] == nil {
+					partialsBySource[sourceType] = make(map[string]string)
+				}
+				partialsBySource[sourceType][name] = string(content)
 			} else {
 				// Check for conflicts and prioritize local templates
 				if existing, exists := templates[name]; exists {
@@ -406,7 +413,7 @@ func loadTemplatesFromDirs(dirs []string) (map[string]TemplateSource, map[string
 		}
 	}
 
-	return templates, partials, nil
+	return templates, partialsBySource, nil
 }
 
 func isValidTarget(target compiler.Target) bool {

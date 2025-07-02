@@ -95,7 +95,7 @@ func TestLoadTemplatesFromDirs(t *testing.T) {
 	}
 
 	// Test loading templates
-	result, partials, err := loadTemplatesFromDirs([]string{templatesDir})
+	result, partialsBySource, err := loadTemplatesFromDirs([]string{templatesDir})
 	if err != nil {
 		t.Errorf("loadTemplatesFromDirs() failed: %v", err)
 	}
@@ -112,8 +112,8 @@ func TestLoadTemplatesFromDirs(t *testing.T) {
 	}
 
 	// Partials should be empty in this test since we don't have any partials/ directories
-	if len(partials) != 0 {
-		t.Errorf("loadTemplatesFromDirs() returned %d partials, expected 0", len(partials))
+	if len(partialsBySource) != 0 {
+		t.Errorf("loadTemplatesFromDirs() returned %d partial sources, expected 0", len(partialsBySource))
 	}
 
 	for name, expectedContent := range expectedTemplates {
@@ -132,7 +132,7 @@ func TestLoadTemplatesFromDirs(t *testing.T) {
 
 func TestLoadTemplatesFromDirsNonExistent(t *testing.T) {
 	// Test with non-existent directory
-	result, partials, err := loadTemplatesFromDirs([]string{"/path/that/does/not/exist"})
+	result, partialsBySource, err := loadTemplatesFromDirs([]string{"/path/that/does/not/exist"})
 	if err != nil {
 		t.Errorf("loadTemplatesFromDirs() with non-existent dir should not error: %v", err)
 	}
@@ -141,8 +141,8 @@ func TestLoadTemplatesFromDirsNonExistent(t *testing.T) {
 		t.Errorf("loadTemplatesFromDirs() with non-existent dir should return empty map, got %d templates", len(result))
 	}
 
-	if len(partials) != 0 {
-		t.Errorf("loadTemplatesFromDirs() with non-existent dir should return empty partials map, got %d partials", len(partials))
+	if len(partialsBySource) != 0 {
+		t.Errorf("loadTemplatesFromDirs() with non-existent dir should return empty partials map, got %d partial sources", len(partialsBySource))
 	}
 }
 
@@ -183,7 +183,7 @@ func TestLoadTemplatesFromMultipleDirs(t *testing.T) {
 	}
 
 	// Test loading from multiple directories
-	result, partials, err := loadTemplatesFromDirs([]string{dir1, dir2})
+	result, partialsBySource, err := loadTemplatesFromDirs([]string{dir1, dir2})
 	if err != nil {
 		t.Errorf("loadTemplatesFromDirs() failed: %v", err)
 	}
@@ -200,8 +200,8 @@ func TestLoadTemplatesFromMultipleDirs(t *testing.T) {
 	}
 
 	// No partials in this test
-	if len(partials) != 0 {
-		t.Errorf("loadTemplatesFromDirs() returned %d partials, expected 0", len(partials))
+	if len(partialsBySource) != 0 {
+		t.Errorf("loadTemplatesFromDirs() returned %d partial sources, expected 0", len(partialsBySource))
 	}
 
 	for name, expectedContent := range expectedTemplates {
@@ -236,7 +236,7 @@ func TestLoadTemplatesWithPartials(t *testing.T) {
 	}
 
 	// Test loading templates
-	templates, partials, err := loadTemplatesFromDirs([]string{templatesDir})
+	templates, partialsBySource, err := loadTemplatesFromDirs([]string{templatesDir})
 	if err != nil {
 		t.Errorf("loadTemplatesFromDirs() failed: %v", err)
 	}
@@ -249,12 +249,19 @@ func TestLoadTemplatesWithPartials(t *testing.T) {
 		t.Error("Main template not found in templates")
 	}
 
-	// Check that partial is in partials
-	if len(partials) != 1 {
-		t.Errorf("Expected 1 partial, got %d", len(partials))
+	// Check that partial is in partials for local source
+	if len(partialsBySource) != 1 {
+		t.Errorf("Expected 1 partial source, got %d", len(partialsBySource))
 	}
-	if _, exists := partials["partials/header"]; !exists {
-		t.Error("Partial template not found in partials")
+	if localPartials, exists := partialsBySource["local"]; !exists {
+		t.Error("Local partials not found")
+	} else {
+		if len(localPartials) != 1 {
+			t.Errorf("Expected 1 local partial, got %d", len(localPartials))
+		}
+		if _, exists := localPartials["partials/header"]; !exists {
+			t.Error("Partial template not found in local partials")
+		}
 	}
 }
 
@@ -397,7 +404,7 @@ func TestLoadTemplatesWithPtmplFiles(t *testing.T) {
 	}
 
 	// Load templates
-	templates, partials, err := loadTemplatesFromDirs([]string{templatesDir})
+	templates, partialsBySource, err := loadTemplatesFromDirs([]string{templatesDir})
 	if err != nil {
 		t.Errorf("loadTemplatesFromDirs() failed: %v", err)
 	}
@@ -414,6 +421,17 @@ func TestLoadTemplatesWithPtmplFiles(t *testing.T) {
 		}
 	}
 
+	// Verify partials are organized by source (should all be local)
+	if len(partialsBySource) != 1 {
+		t.Errorf("Expected 1 partial source, got %d", len(partialsBySource))
+	}
+
+	localPartials, exists := partialsBySource["local"]
+	if !exists {
+		t.Errorf("Local partials not found")
+		return
+	}
+
 	// Verify partials
 	expectedPartials := []string{
 		"components/button",  // .ptmpl without extension
@@ -423,13 +441,13 @@ func TestLoadTemplatesWithPtmplFiles(t *testing.T) {
 		"shared",             // root-level .ptmpl
 	}
 
-	if len(partials) != len(expectedPartials) {
-		t.Errorf("Expected %d partials, got %d", len(expectedPartials), len(partials))
-		t.Errorf("Partials found: %v", getMapKeys(partials))
+	if len(localPartials) != len(expectedPartials) {
+		t.Errorf("Expected %d partials, got %d", len(expectedPartials), len(localPartials))
+		t.Errorf("Partials found: %v", getMapKeys(localPartials))
 	}
 
 	for _, name := range expectedPartials {
-		if _, exists := partials[name]; !exists {
+		if _, exists := localPartials[name]; !exists {
 			t.Errorf("Expected partial %s not found", name)
 		}
 	}
@@ -456,6 +474,124 @@ func getMapKeys(m map[string]string) []string {
 		keys = append(keys, k)
 	}
 	return keys
+}
+
+func TestLoadTemplatesWithVendorPartials(t *testing.T) {
+	// Create temporary directory structure simulating vendor setup
+	tempDir := t.TempDir()
+
+	// Create local templates directory
+	localTemplatesDir := filepath.Join(tempDir, "templates")
+	localPartialsDir := filepath.Join(localTemplatesDir, "partials")
+
+	// Create vendor templates directory
+	vendorTemplatesDir := filepath.Join(tempDir, "vendors", "my-vendor", "templates")
+	vendorPartialsDir := filepath.Join(vendorTemplatesDir, "partials")
+	vendorComponentsDir := filepath.Join(vendorTemplatesDir, "components")
+
+	// Create all directories
+	dirs := []string{
+		localTemplatesDir, localPartialsDir,
+		vendorTemplatesDir, vendorPartialsDir, vendorComponentsDir,
+	}
+	for _, dir := range dirs {
+		if err := os.MkdirAll(dir, 0755); err != nil {
+			t.Fatalf("Failed to create directory %s: %v", dir, err)
+		}
+	}
+
+	// Create test files
+	testFiles := map[string]string{
+		// Local files (can only reference local partials)
+		filepath.Join(localTemplatesDir, "main.tmpl"):        `Local main template using local partial: {{template "partials/local-footer" .}}`,
+		filepath.Join(localPartialsDir, "local-footer.tmpl"): `Local footer for {{.Name}}`,
+
+		// Vendor files (can only reference vendor partials)
+		filepath.Join(vendorTemplatesDir, "vendor-rule.tmpl"):   `Vendor rule using vendor partial: {{template "partials/vendor-header" .}}`,
+		filepath.Join(vendorPartialsDir, "vendor-header.tmpl"):  `Vendor header for {{.Name}}`,
+		filepath.Join(vendorComponentsDir, "vendor-auth.ptmpl"): `Vendor auth component for {{.Language}}`,
+		filepath.Join(vendorPartialsDir, "vendor-footer.tmpl"):  `Vendor footer for {{.Name}}`,
+
+		// Conflicting partial names (should be isolated by source)
+		filepath.Join(localPartialsDir, "shared.tmpl"):  `Local shared partial`,
+		filepath.Join(vendorPartialsDir, "shared.tmpl"): `Vendor shared partial`,
+	}
+
+	// Create all test files
+	for path, content := range testFiles {
+		if err := os.WriteFile(path, []byte(content), 0644); err != nil {
+			t.Fatalf("Failed to write file %s: %v", path, err)
+		}
+	}
+
+	// Load templates from both directories (mimicking vendor setup)
+	templates, partialsBySource, err := loadTemplatesFromDirs([]string{localTemplatesDir, vendorTemplatesDir})
+	if err != nil {
+		t.Errorf("loadTemplatesFromDirs() failed: %v", err)
+	}
+
+	// Verify main templates
+	expectedTemplates := []string{"main", "vendor-rule"}
+	if len(templates) != len(expectedTemplates) {
+		t.Errorf("Expected %d main templates, got %d", len(expectedTemplates), len(templates))
+	}
+
+	// Verify partials are isolated by source
+	if len(partialsBySource) != 2 {
+		t.Errorf("Expected 2 partial sources, got %d", len(partialsBySource))
+	}
+
+	// Check local partials
+	localPartials, localExists := partialsBySource["local"]
+	if !localExists {
+		t.Errorf("Local partials not found")
+	} else {
+		expectedLocalPartials := map[string]string{
+			"partials/local-footer": "Local footer for {{.Name}}",
+			"partials/shared":       "Local shared partial",
+		}
+
+		if len(localPartials) != len(expectedLocalPartials) {
+			t.Errorf("Expected %d local partials, got %d", len(expectedLocalPartials), len(localPartials))
+		}
+
+		for name, expectedContent := range expectedLocalPartials {
+			if content, exists := localPartials[name]; !exists {
+				t.Errorf("Expected local partial %s not found", name)
+			} else if content != expectedContent {
+				t.Errorf("Local partial %s has wrong content.\nGot: %s\nExpected: %s", name, content, expectedContent)
+			}
+		}
+	}
+
+	// Check vendor partials
+	vendorPartials, vendorExists := partialsBySource["my-vendor"]
+	if !vendorExists {
+		t.Errorf("Vendor partials not found")
+	} else {
+		expectedVendorPartials := map[string]string{
+			"partials/vendor-header": "Vendor header for {{.Name}}",
+			"partials/vendor-footer": "Vendor footer for {{.Name}}",
+			"components/vendor-auth": "Vendor auth component for {{.Language}}",
+			"partials/shared":        "Vendor shared partial",
+		}
+
+		if len(vendorPartials) != len(expectedVendorPartials) {
+			t.Errorf("Expected %d vendor partials, got %d", len(expectedVendorPartials), len(vendorPartials))
+		}
+
+		for name, expectedContent := range expectedVendorPartials {
+			if content, exists := vendorPartials[name]; !exists {
+				t.Errorf("Expected vendor partial %s not found", name)
+			} else if content != expectedContent {
+				t.Errorf("Vendor partial %s has wrong content.\nGot: %s\nExpected: %s", name, content, expectedContent)
+			}
+		}
+	}
+
+	// Note: We don't test cross-directory partial references here because
+	// templates should only be able to access partials from their own source.
+	// This isolation is enforced during compilation.
 }
 
 func TestParseTemplateFrontMatter(t *testing.T) {

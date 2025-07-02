@@ -373,9 +373,9 @@ templates/
 
 Main template (`templates/main.tmpl`):
 ```go
-{{template "partials/header" .}}              <!-- Traditional partial -->
-{{template "components/auth" .}}              <!-- .ptmpl from components/ -->
-{{template "layouts/base" .}}                 <!-- .ptmpl from layouts/ -->
+{{template "partials/header" .}}              <!-- Local traditional partial -->
+{{template "components/auth" .}}              <!-- Local .ptmpl from components/ -->
+{{template "layouts/base" .}}                 <!-- Local .ptmpl from layouts/ -->
 
 # Main content here
 
@@ -406,6 +406,12 @@ description: "Security checklist component"
 - All template variables from the main template are available in partials when the dot is included
 - Both `.tmpl` files in `partials/` directories and `.ptmpl` files anywhere are treated as partials
 - Partials can have YAML front matter, but it's stripped during compilation
+
+#### Template and Partial Isolation 🆕
+- **Local templates** can only access **local partials**
+- **Vendor templates** can only access **partials from the same vendor**
+- This ensures complete isolation and prevents naming conflicts
+- Each template compiles independently with its own set of available partials
 
 ## Claude Code Installation Modes 🆕
 
