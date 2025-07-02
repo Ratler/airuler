@@ -875,12 +875,10 @@ func loadAvailableTemplates() ([]installSelectionItem, error) {
 			return targetItems[i].rule < targetItems[j].rule
 		})
 
-		// Add group header if we have multiple targets
-		if len(groups) > 1 {
-			items = append(items, installSelectionItem{
-				displayText: fmt.Sprintf("GROUP_HEADER:📦 %s", cases.Title(language.English).String(string(target))),
-			})
-		}
+		// Add group header for target
+		items = append(items, installSelectionItem{
+			displayText: fmt.Sprintf("GROUP_HEADER:📦 %s", cases.Title(language.English).String(string(target))),
+		})
 
 		items = append(items, targetItems...)
 	}
