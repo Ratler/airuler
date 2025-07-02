@@ -7,11 +7,12 @@ A Go-based CLI tool that compiles AI rule templates into target-specific formats
 - 🎯 **Multi-target compilation**: Generate rules for Cursor, Claude Code, Cline, GitHub Copilot, and Roo Code
 - 📦 **Vendor management**: Fetch and manage rule templates from Git repositories  
 - 🔄 **Template inheritance**: Support for template partials (.tmpl in partials/ dirs and .ptmpl files anywhere)
-- 💾 **Safe installation**: Automatic backup of existing rules
+- 💾 **Safe installation**: Automatic backup of existing rules and installation tracking
 - 🔍 **Watch mode**: Auto-compile templates during development
 - ⚙️ **Flexible configuration**: YAML-based configuration with lock files
 - 🧠 **Claude Code modes**: Memory (persistent) and command (on-demand) installation modes
 - 📝 **YAML front matter**: Rich template metadata and configuration
+- 🌍 **Global template directory**: Run commands from anywhere - airuler remembers your last template directory
 
 ## Installation
 
@@ -601,7 +602,197 @@ defaults:
   include_vendors: ["*"]  # Include all vendors by default
   # Or specify specific vendors:
   # include_vendors: [frontend, security]
+  last_template_dir: "/path/to/templates"  # Auto-managed template directory
 ```
+
+## Global Template Directory 🆕
+
+airuler automatically remembers the last template directory you compiled from, allowing you to run commands from anywhere without needing to be in the template directory.
+
+### How It Works
+
+1. **Automatic Detection**: When you run `airuler compile` (or any command) from a template directory, airuler automatically saves that directory as your default template directory.
+
+2. **Seamless Operation**: When you run airuler commands from outside a template directory, airuler automatically operates as if you're in the last template directory, while keeping you in your current shell location.
+
+3. **User Feedback**: When operating from a remembered template directory, airuler shows: `Using template directory: /path/to/templates`
+
+### Usage Examples
+
+```bash
+# Compile from template directory (saves as default)
+cd /path/to/my-templates
+airuler compile
+
+# Later, run commands from anywhere
+cd /completely/different/directory
+airuler compile        # Uses /path/to/my-templates internally
+airuler install        # Uses /path/to/my-templates internally
+airuler watch          # Uses /path/to/my-templates internally
+```
+
+### Manual Configuration
+
+Set the template directory manually:
+
+```bash
+# Set specific template directory
+airuler config set-template-dir /path/to/my-templates
+
+# Set relative to current directory
+airuler config set-template-dir ./templates
+
+# The command validates that the path is a valid template directory
+# (contains both 'templates/' directory and 'airuler.lock' file)
+```
+
+### Template Directory Detection
+
+A directory is considered a valid template directory if it contains:
+- `templates/` directory (with your template files)
+- `airuler.lock` file (dependency lock file)
+
+### Error Handling
+
+If the remembered template directory is no longer valid:
+
+```bash
+$ airuler compile
+Error: Last template directory '/old/path/templates' is no longer a valid airuler template directory
+Please run 'airuler config set-template-dir <path>' to set a new template directory
+```
+
+### Benefits
+
+- **Convenience**: Run airuler commands from anywhere in your filesystem
+- **Workflow Integration**: Fits naturally into development workflows where you might be in different directories
+- **Project Flexibility**: Switch between different template repositories seamlessly
+- **Backward Compatibility**: Existing workflows continue to work unchanged
+
+## Installation Tracking 🛡️
+
+airuler automatically tracks where templates have been installed, enabling safe updates, clean uninstalls, and comprehensive management of your AI rules across different targets and projects.
+
+### How Installation Tracking Works
+
+When you install templates using `airuler install`, airuler automatically:
+
+1. **Records Installation Details**: Tracks the target, rule name, installation location, mode, and timestamp
+2. **Maintains Installation Database**: Stores tracking information in global and project-specific databases
+3. **Enables Safe Operations**: Allows for clean uninstalls and selective updates
+
+### Installation Database Locations
+
+- **Global installations**: `~/.config/airuler/installations.yaml` (Linux/macOS) or `%APPDATA%\airuler\installations.yaml` (Windows)
+- **Project installations**: `./.airuler/installations.yaml` in each project directory
+
+### Key Benefits
+
+- **Clean Uninstalls**: Remove only files that airuler installed, never accidentally delete user files
+- **Selective Updates**: Update specific rules or targets without affecting others
+- **Installation History**: See what was installed when and where
+- **Safe Overwrites**: Automatic backups before overwriting existing files
+
+### Viewing Installed Templates
+
+```bash
+# List all installed templates
+airuler list-installed
+
+# Filter by keyword
+airuler list-installed --filter cursor
+
+# Show global installations only
+airuler list-installed --global
+
+# Show project installations only  
+airuler list-installed --project
+```
+
+Example output:
+```
+🌍 Global Installations
+==============================================================================
+Target   Rule                 Mode     File                      Installed      
+------------------------------------------------------------------------------
+cursor   coding-standards     normal   coding-standards.mdc      2 hours ago
+claude   security-guide       memory   CLAUDE.md                 1 day ago
+claude   refactor-helper      command  refactor-helper.md        1 day ago
+
+📁 Project Installations (/path/to/project)
+==============================================================================
+Target   Rule                 Mode     File                      Installed
+------------------------------------------------------------------------------
+cursor   project-rules        normal   project-rules.mdc         3 hours ago
+```
+
+### Updating Installed Templates
+
+```bash
+# Update all tracked installations
+airuler update-installed
+
+# Update only global installations
+airuler update-installed --global
+
+# Update only project installations
+airuler update-installed --project
+```
+
+The update process:
+1. Recompiles templates from source
+2. Compares with installed versions
+3. Updates only if content has changed
+4. Creates backups before overwriting
+5. Updates tracking database with new timestamps
+
+### Uninstalling Templates
+
+```bash
+# Uninstall all tracked installations (with confirmation)
+airuler uninstall
+
+# Uninstall specific target
+airuler uninstall claude
+
+# Uninstall specific rule
+airuler uninstall claude security-guide
+
+# Interactive selection mode
+airuler uninstall --interactive
+
+# Force uninstall without prompts
+airuler uninstall --force
+```
+
+### Installation Modes and Tracking
+
+airuler tracks different installation types:
+
+- **Global installations**: Rules installed to AI tool global configurations
+- **Project installations**: Rules installed to specific project directories  
+- **Memory mode (Claude)**: Content appended to CLAUDE.md files
+- **Command mode (Claude)**: Individual command files in .claude/commands/
+
+### Manual Installation Management
+
+If you need to manually manage the installation database:
+
+```bash
+# View installation tracker files
+airuler config path  # Shows config directory locations
+
+# The installation database files are:
+# ~/.config/airuler/installations.yaml (global)
+# ./.airuler/installations.yaml (project-specific)
+```
+
+### Safety Features
+
+- **Backup Creation**: Original files are backed up before overwriting (e.g., `rule.md.backup.20240102-143022`)
+- **Collision Detection**: Warns when installing would overwrite non-airuler files
+- **Selective Removal**: Only removes files that airuler installed
+- **Version Tracking**: Maintains installation history and timestamps
 
 ## Commands Reference
 
@@ -649,9 +840,10 @@ airuler uninstall --interactive       # Interactive selection mode (short: -i)
 
 ### Configuration Commands
 ```bash
-airuler config init                   # Initialize global configuration
-airuler config path                   # Show configuration file paths
-airuler config edit                   # Edit global configuration
+airuler config init                     # Initialize global configuration
+airuler config path                     # Show configuration file paths
+airuler config edit                     # Edit global configuration
+airuler config set-template-dir <path>  # Set default template directory
 ```
 
 ### Vendor Management Commands
@@ -685,7 +877,7 @@ airuler vendors exclude-all           # Exclude all vendors
 
 ### Additional Commands
 ```bash
-airuler list-installed                # List all installed templates
+airuler list-installed                     # List all installed templates
 airuler list-installed --filter <keyword>  # Filter templates by keyword (short: -f)
 ```
 

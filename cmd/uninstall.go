@@ -536,10 +536,20 @@ func reinstallCopilotRules(rules []config.InstallationRecord, projectPath string
 		return fmt.Errorf("copilot rules require project path")
 	}
 
-	// Get absolute project path
-	absPath, err := filepath.Abs(projectPath)
-	if err != nil {
-		return fmt.Errorf("failed to resolve project path: %w", err)
+	// Get absolute project path, handling both absolute and relative paths correctly
+	var absPath string
+	if filepath.IsAbs(projectPath) {
+		absPath = projectPath
+	} else {
+		// For relative paths, resolve them relative to the original working directory
+		// This handles cases where installation records contain relative paths
+		originalDir := GetOriginalWorkingDir()
+		resolvedPath := filepath.Join(originalDir, projectPath)
+		var err error
+		absPath, err = filepath.Abs(resolvedPath)
+		if err != nil {
+			return fmt.Errorf("failed to resolve project path: %w", err)
+		}
 	}
 
 	targetDir := filepath.Join(absPath, ".github")

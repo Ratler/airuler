@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"runtime"
 
 	"github.com/ratler/airuler/internal/config"
@@ -53,12 +54,23 @@ var configEditCmd = &cobra.Command{
 	},
 }
 
+var configSetTemplateDirCmd = &cobra.Command{
+	Use:   "set-template-dir <path>",
+	Short: "Set the default template directory",
+	Long:  `Set the default template directory that will be used when running airuler commands from outside a template directory.`,
+	Args:  cobra.ExactArgs(1),
+	RunE: func(_ *cobra.Command, args []string) error {
+		return setTemplateDir(args[0])
+	},
+}
+
 func init() {
 	rootCmd.AddCommand(configCmd)
 
 	configCmd.AddCommand(configInitCmd)
 	configCmd.AddCommand(configPathCmd)
 	configCmd.AddCommand(configEditCmd)
+	configCmd.AddCommand(configSetTemplateDirCmd)
 }
 
 func initGlobalConfig() error {
@@ -189,4 +201,30 @@ func getEditor() string {
 	}
 
 	return ""
+}
+
+func setTemplateDir(path string) error {
+	// Convert to absolute path
+	absPath, err := os.Getwd()
+	if err != nil {
+		return fmt.Errorf("failed to get current directory: %w", err)
+	}
+
+	// If path is not absolute, make it relative to current directory
+	if !filepath.IsAbs(path) {
+		absPath = filepath.Join(absPath, path)
+	} else {
+		absPath = path
+	}
+
+	// Clean the path
+	cleanPath := filepath.Clean(absPath)
+
+	// Update the configuration
+	if err := config.UpdateLastTemplateDir(cleanPath); err != nil {
+		return fmt.Errorf("failed to set template directory: %w", err)
+	}
+
+	fmt.Printf("✅ Template directory set to: %s\n", cleanPath)
+	return nil
 }

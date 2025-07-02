@@ -30,6 +30,23 @@ var (
 	installInteractive bool
 )
 
+// resolveProjectPath resolves the project path relative to the original working directory
+// This is needed because setupWorkingDirectory may have changed the current directory
+func resolveProjectPath(projectPath string) (string, error) {
+	if projectPath == "" {
+		return "", nil
+	}
+
+	if filepath.IsAbs(projectPath) {
+		return projectPath, nil
+	}
+
+	// For relative paths, resolve them relative to the original working directory
+	originalDir := GetOriginalWorkingDir()
+	absPath := filepath.Join(originalDir, projectPath)
+	return filepath.Abs(absPath)
+}
+
 var installCmd = &cobra.Command{
 	Use:   "install [target] [rule]",
 	Short: "Install compiled rules to AI coding assistants",
@@ -156,7 +173,12 @@ func installForTarget(target compiler.Target) (int, error) {
 		var targetDir string
 		var err error
 		if installProject != "" {
-			targetDir, err = getProjectInstallDirForMode(target, installProject, mode)
+			resolvedPath, resolveErr := resolveProjectPath(installProject)
+			if resolveErr != nil {
+				fmt.Printf("  ⚠️  Failed to resolve project path for %s: %v\n", file.Name(), resolveErr)
+				continue
+			}
+			targetDir, err = getProjectInstallDirForMode(target, resolvedPath, mode)
 		} else {
 			targetDir, err = getGlobalInstallDirForMode(target, mode)
 		}
@@ -205,7 +227,7 @@ func installCopilotRules(compiledDir string, files []os.DirEntry) (int, error) {
 	}
 
 	// Get project directory
-	absPath, err := filepath.Abs(installProject)
+	absPath, err := resolveProjectPath(installProject)
 	if err != nil {
 		return 0, fmt.Errorf("failed to resolve project path: %w", err)
 	}
@@ -403,7 +425,11 @@ func copyFile(source, dest string) error {
 
 func getTargetInstallDir(target compiler.Target) (string, error) {
 	if installProject != "" {
-		return getProjectInstallDir(target, installProject)
+		resolvedPath, err := resolveProjectPath(installProject)
+		if err != nil {
+			return "", err
+		}
+		return getProjectInstallDir(target, resolvedPath)
 	}
 	return getGlobalInstallDir(target)
 }
@@ -446,9 +472,20 @@ func getGlobalInstallDir(target compiler.Target) (string, error) {
 }
 
 func getProjectInstallDir(target compiler.Target, projectPath string) (string, error) {
-	absPath, err := filepath.Abs(projectPath)
-	if err != nil {
-		return "", err
+	// Handle both absolute and relative paths correctly
+	var absPath string
+	if filepath.IsAbs(projectPath) {
+		absPath = projectPath
+	} else {
+		// For relative paths, resolve them relative to the original working directory
+		// This handles cases where installation records contain relative paths
+		originalDir := GetOriginalWorkingDir()
+		resolvedPath := filepath.Join(originalDir, projectPath)
+		var err error
+		absPath, err = filepath.Abs(resolvedPath)
+		if err != nil {
+			return "", err
+		}
 	}
 
 	switch target {
@@ -468,9 +505,20 @@ func getProjectInstallDir(target compiler.Target, projectPath string) (string, e
 }
 
 func getProjectInstallDirForMode(target compiler.Target, projectPath, mode string) (string, error) {
-	absPath, err := filepath.Abs(projectPath)
-	if err != nil {
-		return "", err
+	// Handle both absolute and relative paths correctly
+	var absPath string
+	if filepath.IsAbs(projectPath) {
+		absPath = projectPath
+	} else {
+		// For relative paths, resolve them relative to the original working directory
+		// This handles cases where installation records contain relative paths
+		originalDir := GetOriginalWorkingDir()
+		resolvedPath := filepath.Join(originalDir, projectPath)
+		var err error
+		absPath, err = filepath.Abs(resolvedPath)
+		if err != nil {
+			return "", err
+		}
 	}
 
 	switch target {
@@ -558,7 +606,7 @@ func recordInstallation(target compiler.Target, rule, filePath, mode string) err
 	// Convert project path to absolute path if it's a project installation
 	var projectPath string
 	if installProject != "" {
-		absPath, err := filepath.Abs(installProject)
+		absPath, err := resolveProjectPath(installProject)
 		if err != nil {
 			return fmt.Errorf("failed to get absolute path for project: %w", err)
 		}
@@ -791,7 +839,7 @@ func loadAvailableTemplates() ([]installSelectionItem, error) {
 			// Check if already installed
 			var projectPath string
 			if installProject != "" {
-				absPath, _ := filepath.Abs(installProject)
+				absPath, _ := resolveProjectPath(installProject)
 				projectPath = absPath
 			}
 			installKey := fmt.Sprintf("%s:%s:%t:%s", target, ruleName, installProject == "", projectPath)
@@ -896,7 +944,13 @@ func performInteractiveInstallations(selectedItems []installSelectionItem) error
 			var targetDir string
 			var err error
 			if installProject != "" {
-				targetDir, err = getProjectInstallDirForMode(target, installProject, item.mode)
+				resolvedPath, resolveErr := resolveProjectPath(installProject)
+				if resolveErr != nil {
+					fmt.Printf("  ⚠️  Failed to resolve project path for %s: %v\n", item.rule, resolveErr)
+					failed++
+					continue
+				}
+				targetDir, err = getProjectInstallDirForMode(target, resolvedPath, item.mode)
 			} else {
 				targetDir, err = getGlobalInstallDirForMode(target, item.mode)
 			}

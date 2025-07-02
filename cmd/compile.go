@@ -277,6 +277,15 @@ func compileTemplates(targets []compiler.Target) error {
 	}
 
 	fmt.Printf("\n🎉 Successfully compiled %d rules for %d targets\n", len(templates), len(targets))
+
+	// Update last template directory after successful compilation
+	currentDir, err := os.Getwd()
+	if err == nil && config.IsTemplateDirectory(currentDir) {
+		if err := config.UpdateLastTemplateDir(currentDir); err != nil && viper.GetBool("verbose") {
+			fmt.Printf("Warning: Failed to update last template directory: %v\n", err)
+		}
+	}
+
 	return nil
 }
 

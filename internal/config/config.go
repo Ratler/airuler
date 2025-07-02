@@ -12,7 +12,8 @@ type Config struct {
 }
 
 type DefaultConfig struct {
-	IncludeVendors []string `yaml:"include_vendors"`
+	IncludeVendors  []string `yaml:"include_vendors"`
+	LastTemplateDir string   `yaml:"last_template_dir,omitempty"`
 }
 
 type LockFile struct {
