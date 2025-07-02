@@ -217,7 +217,12 @@ func compileTemplates(targets []compiler.Target) error {
 			// Load only partials from the same source as this template
 			if sourcePartials, exists := partialsBySource[templateSource.SourceType]; exists {
 				if viper.GetBool("verbose") && len(sourcePartials) > 0 {
-					fmt.Printf("Loading %d partials for %s template %s...\n", len(sourcePartials), templateSource.SourceType, templateName)
+					fmt.Printf(
+						"Loading %d partials for %s template %s...\n",
+						len(sourcePartials),
+						templateSource.SourceType,
+						templateName,
+					)
 				}
 				for partialName, partialContent := range sourcePartials {
 					// Strip front matter from partial content before loading
@@ -293,7 +298,7 @@ func compileTemplates(targets []compiler.Target) error {
 			outputComp := compiler.NewCompiler()
 			claudeMdPath := outputComp.GetOutputPath(target, "CLAUDE.md")
 			// Use clear section separators that Claude will understand
-			separator := "\n\n<!-- ==================== NEXT RULE SECTION ==================== -->\n\n"
+			separator := "\n\n---\n\n"
 			combinedContent := strings.Join(memoryModeContent, separator)
 			if err := os.WriteFile(claudeMdPath, []byte(combinedContent), 0600); err != nil {
 				return fmt.Errorf("failed to write CLAUDE.md: %w", err)
@@ -591,7 +596,12 @@ func getVendorTemplateDirs() []string {
 }
 
 // createTemplateData merges vendor configuration with front matter to create template data
-func createTemplateData(templateName string, frontMatter TemplateFrontMatter, context config.ResolvedTemplateContext, target string) template.Data {
+func createTemplateData(
+	templateName string,
+	frontMatter TemplateFrontMatter,
+	context config.ResolvedTemplateContext,
+	target string,
+) template.Data {
 	// Start with vendor defaults
 	data := template.Data{
 		Name:   templateName,
@@ -612,7 +622,11 @@ func createTemplateData(templateName string, frontMatter TemplateFrontMatter, co
 	// Override with front matter (front matter takes precedence)
 	data.Description = getValueOrDefault(
 		frontMatter.Description,
-		getStringFromVendorDefaults(context.TemplateDefaults, "description", fmt.Sprintf("AI coding rules for %s", templateName)),
+		getStringFromVendorDefaults(
+			context.TemplateDefaults,
+			"description",
+			fmt.Sprintf("AI coding rules for %s", templateName),
+		),
 	)
 	data.Globs = getGlobsValue(frontMatter.Globs)
 
