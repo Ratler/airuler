@@ -385,7 +385,6 @@ globs: "**/*.{ts,tsx,js,jsx}"
 # TypeScript React Development Standards
 
 ## Component Structure
-```typescript
 // Use functional components with proper typing
 interface Props {
   title: string;
