@@ -401,7 +401,6 @@ export const MyComponent: React.FC<Props> = ({ title, children, onClick }) => {
     </div>
   );
 };
-```
 
 ## State Management
 - Use `useState` for local state
@@ -411,6 +410,7 @@ export const MyComponent: React.FC<Props> = ({ title, children, onClick }) => {
 ## Testing Requirements
 - Write unit tests for all components
 - Use React Testing Library
+
 - Test user interactions and edge cases
 - Maintain >80% test coverage
 
