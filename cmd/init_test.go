@@ -68,7 +68,9 @@ func TestInitProject(t *testing.T) {
 	expectedConfigParts := []string{
 		"defaults:",
 		"include_vendors:",
-		"vendor_overrides:",
+		"vendor:",
+		"name: \"My AI Rules\"",
+		"version: \"1.0.0\"",
 	}
 
 	for _, part := range expectedConfigParts {

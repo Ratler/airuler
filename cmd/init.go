@@ -7,11 +7,15 @@ import (
 	"bufio"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
+	"time"
 
-	"github.com/ratler/airuler/internal/config"
+	gogit "github.com/go-git/go-git/v5"
+	"github.com/go-git/go-git/v5/plumbing"
+	"github.com/go-git/go-git/v5/plumbing/object"
+	airulerconfig "github.com/ratler/airuler/internal/config"
+	"github.com/ratler/airuler/internal/git"
 	"github.com/spf13/cobra"
 	yaml "gopkg.in/yaml.v3"
 )
@@ -124,16 +128,13 @@ defaults:
   # Use ["*"] to include all vendors, or specify specific vendors by name
   include_vendors: ["*"]
 
-# Vendor-specific overrides (optional)
-# Use this to customize vendor settings without modifying vendor repositories
-# vendor_overrides:
-#   vendor-name:
-#     template_defaults:
-#       project_type: "custom-type"
-#       language: "custom-language"
-#     targets:
-#       claude:
-#         default_mode: "command"  # Override vendor's default mode
+# Vendor metadata - describes this vendor/project
+vendor:
+  name: "My AI Rules"
+  description: "Custom AI coding assistant rules for my project"
+  version: "1.0.0"
+  author: "Your Name"
+  # homepage: "https://github.com/your-username/your-rules"
 `
 
 	if err := os.WriteFile("airuler.yaml", []byte(modernConfigContent), 0600); err != nil {
@@ -141,8 +142,8 @@ defaults:
 	}
 
 	// Create empty lock file
-	lockFile := &config.LockFile{
-		Vendors: make(map[string]config.VendorLock),
+	lockFile := &airulerconfig.LockFile{
+		Vendors: make(map[string]airulerconfig.VendorLock),
 	}
 	lockData, err := yaml.Marshal(lockFile)
 	if err != nil {
@@ -193,19 +194,19 @@ For more information, documentation, and source code, visit: https://github.com/
 
 ` + "```" + `
 .
-├── templates/          # Your rule templates
-│   ├── components/    # Reusable components (.ptmpl)
-│   └── examples/      # Example templates
-├── vendors/           # External rule repositories (git-ignored)
-├── compiled/          # Generated rules for each target
+├── templates/        # Your rule templates
+│   ├── components/   # Reusable components (.ptmpl)
+│   └── examples/     # Example templates
+├── vendors/          # External rule repositories (git-ignored)
+├── compiled/         # Generated rules for each target
 │   ├── cursor/       # Cursor IDE rules (.mdc files)
 │   ├── claude/       # Claude Code rules (.md files)
 │   ├── cline/        # Cline rules (.md files)
 │   ├── copilot/      # GitHub Copilot rules (.instructions.md files)
 │   └── roo/          # Roo Code rules (.md files)
-├── airuler.yaml       # Project configuration
-├── airuler.lock       # Vendor dependency locks
-└── README.md          # This file
+├── airuler.yaml      # Project configuration
+├── airuler.lock      # Vendor dependency locks
+└── README.md         # This file
 ` + "```" + `
 
 ## Getting Started
@@ -275,13 +276,38 @@ airuler update                                    # Update vendors
 
 ## Configuration
 
-Edit ` + "`airuler.yaml`" + ` to configure vendors and overrides:
+Edit ` + "`airuler.yaml`" + ` to customize your rules project:
 
 ` + "```" + `yaml
+# Project metadata
+vendor:
+  name: "My AI Rules"
+  description: "Custom AI rules for my project"
+  version: "1.0.0"
+  author: "Your Name"
+
+# Template defaults available to all templates
+template_defaults:
+  language: "typescript"
+  framework: "react"
+  project_type: "web-application"
+
+# Target-specific configuration
+targets:
+  claude:
+    default_mode: "both"  # memory, command, or both
+  cursor:
+    always_apply: true
+
+# Global variables for templates
+variables:
+  company_name: "Your Company"
+
+# Include external vendors
 defaults:
   include_vendors: ["*"]  # Include all vendors
 
-# Override vendor settings (optional)
+# Override external vendor settings (optional)
 vendor_overrides:
   vendor-name:
     template_defaults:
@@ -519,36 +545,216 @@ func askYesNo(prompt string) bool {
 	return response == "y" || response == "yes"
 }
 
-// initializeGitRepo initializes a git repository and creates an initial commit
-func initializeGitRepo() error {
-	// Check if git is available
-	if _, err := exec.LookPath("git"); err != nil {
-		return fmt.Errorf("git is not installed or not in PATH")
+// askString prompts the user for a string input with an optional default value
+func askString(prompt, defaultValue string) string {
+	// Check if we have a proper terminal for interactive input
+	fileInfo, err := os.Stdin.Stat()
+	if err != nil {
+		fmt.Printf("Warning: Cannot check stdin availability: %v. Using default value.\n", err)
+		return defaultValue
 	}
 
+	// If stdin is not a character device (e.g., piped input), handle it differently
+	if (fileInfo.Mode() & os.ModeCharDevice) == 0 {
+		// We have piped input, try to read it
+		reader := bufio.NewReader(os.Stdin)
+		if defaultValue != "" {
+			fmt.Printf("%s [%s]: ", prompt, defaultValue)
+		} else {
+			fmt.Printf("%s: ", prompt)
+		}
+		response, err := reader.ReadString('\n')
+		if err != nil {
+			fmt.Printf("Warning: Could not read piped input: %v. Using default value.\n", err)
+			return defaultValue
+		}
+		response = strings.TrimSpace(response)
+		if response == "" {
+			return defaultValue
+		}
+		return response
+	}
+
+	// We have a terminal, try interactive input
+	for {
+		if defaultValue != "" {
+			fmt.Printf("%s [%s]: ", prompt, defaultValue)
+		} else {
+			fmt.Printf("%s: ", prompt)
+		}
+
+		reader := bufio.NewReader(os.Stdin)
+		response, err := reader.ReadString('\n')
+		if err != nil {
+			// Handle EOF or other stdin errors gracefully
+			fmt.Printf("\nWarning: No input available (stdin closed). Using default value.\n")
+			fmt.Println("Hint: Run 'airuler init' in a proper terminal for interactive prompts.")
+			return defaultValue
+		}
+
+		response = strings.TrimSpace(response)
+		if response == "" {
+			if defaultValue != "" {
+				return defaultValue
+			}
+			fmt.Println("This field is required. Please enter a value.")
+			continue
+		}
+		return response
+	}
+}
+
+// promptForUserInfo prompts the user for missing git user name and/or email
+func promptForUserInfo(existingUser *git.User) (*git.User, error) {
+	// Start with existing values or empty strings
+	var name, email string
+	if existingUser != nil {
+		name = existingUser.Name
+		email = existingUser.Email
+	}
+
+	// Check what's missing or invalid
+	needsName := !git.IsValidName(name)
+	needsEmail := !git.IsValidEmail(email)
+
+	// Only show prompt if we actually need to ask for something
+	if needsName || needsEmail {
+		fmt.Println("\n🔧 Git user configuration needed for commits:")
+
+		// Show what we found and what's missing
+		if existingUser != nil && existingUser.Name != "" && !needsName {
+			fmt.Printf("✓ Using existing name: %s\n", existingUser.Name)
+		}
+		if existingUser != nil && existingUser.Email != "" && !needsEmail {
+			fmt.Printf("✓ Using existing email: %s\n", existingUser.Email)
+		}
+	}
+
+	// Only prompt for name if it's missing or invalid
+	if needsName {
+		name = askString("Git user name", name)
+		if !git.IsValidName(name) {
+			return nil, fmt.Errorf("invalid name: must be at least 2 characters long")
+		}
+	}
+
+	// Only prompt for email if it's missing or invalid
+	if needsEmail {
+		email = askString("Git user email", email)
+		if !git.IsValidEmail(email) {
+			return nil, fmt.Errorf("invalid email format")
+		}
+	}
+
+	return &git.User{
+		Name:  name,
+		Email: email,
+	}, nil
+}
+
+// initializeGitRepo initializes a git repository and creates an initial commit using go-git
+func initializeGitRepo() error {
 	// Check if already in a git repository
 	if _, err := os.Stat(".git"); err == nil {
 		return fmt.Errorf("directory is already a git repository")
 	}
 
-	// Initialize git repository
-	cmd := exec.Command("git", "init")
-	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("failed to run 'git init': %w", err)
+	// Try to get user information from global git config
+	var user *git.User
+	var err error
+
+	// Skip user prompting in test mode
+	if os.Getenv("AIRULER_TEST_MODE") != "" {
+		user = &git.User{
+			Name:  "Test User",
+			Email: "test@example.com",
+		}
+	} else {
+		// Try to read from global git config first
+		globalUser, err := git.GetGlobalGitUser()
+		if err != nil {
+			fmt.Printf("ℹ️  Could not read git user from ~/.gitconfig: %v\n", err)
+		}
+
+		// Check if we have complete user info
+		needsUserInfo := globalUser == nil ||
+			globalUser.Name == "" ||
+			globalUser.Email == "" ||
+			!git.IsValidName(globalUser.Name) ||
+			!git.IsValidEmail(globalUser.Email)
+
+		if needsUserInfo {
+			// Prompt for missing or invalid user information
+			user, err = promptForUserInfo(globalUser)
+			if err != nil {
+				return fmt.Errorf("failed to get user information: %w", err)
+			}
+		} else {
+			user = globalUser
+			fmt.Printf("✅ Using git user: %s <%s>\n", user.Name, user.Email)
+		}
+	}
+
+	// Initialize git repository with go-git
+	repo, err := gogit.PlainInit(".", false)
+	if err != nil {
+		return fmt.Errorf("failed to initialize git repository: %w", err)
+	}
+
+	// Set default branch to "main"
+	headRef := plumbing.NewSymbolicReference(plumbing.HEAD, plumbing.NewBranchReferenceName("main"))
+	if err := repo.Storer.SetReference(headRef); err != nil {
+		return fmt.Errorf("failed to set default branch to main: %w", err)
+	}
+
+	// Get repository config and set user information locally
+	cfg, err := repo.Config()
+	if err != nil {
+		return fmt.Errorf("failed to get repository config: %w", err)
+	}
+
+	// Set default branch and user info in local repository config
+	cfg.Init.DefaultBranch = "main"
+	cfg.User.Name = user.Name
+	cfg.User.Email = user.Email
+
+	if err := repo.SetConfig(cfg); err != nil {
+		return fmt.Errorf("failed to set repository config: %w", err)
+	}
+
+	// Get working tree
+	worktree, err := repo.Worktree()
+	if err != nil {
+		return fmt.Errorf("failed to get worktree: %w", err)
 	}
 
 	// Add all files
-	cmd = exec.Command("git", "add", ".")
-	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("failed to run 'git add .': %w", err)
+	if err := worktree.AddWithOptions(&gogit.AddOptions{All: true}); err != nil {
+		return fmt.Errorf("failed to add files: %w", err)
 	}
 
-	// Create initial commit
-	cmd = exec.Command("git", "commit", "-m", "Initial airuler project setup")
-	if err := cmd.Run(); err != nil {
+	// Create initial commit with proper user information
+	commit, err := worktree.Commit("Initial airuler project setup", &gogit.CommitOptions{
+		Author: &object.Signature{
+			Name:  user.Name,
+			Email: user.Email,
+			When:  time.Now(),
+		},
+	})
+	if err != nil {
 		return fmt.Errorf("failed to create initial commit: %w", err)
 	}
 
-	fmt.Println("📦 Git repository initialized with initial commit")
+	// Update main branch to point to the new commit
+	mainRef := plumbing.NewHashReference(plumbing.NewBranchReferenceName("main"), commit)
+	if err := repo.Storer.SetReference(mainRef); err != nil {
+		return fmt.Errorf("failed to update main branch reference: %w", err)
+	}
+
+	fmt.Printf(
+		"📦 Git repository initialized with initial commit on main branch (author: %s <%s>)\n",
+		user.Name,
+		user.Email,
+	)
 	return nil
 }
