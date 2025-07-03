@@ -7,38 +7,36 @@ airuler automatically tracks where templates have been installed, enabling safe 
 When you install templates using `airuler install`, airuler automatically:
 
 1. **Records Installation Details**: Tracks the target, rule name, installation location, mode, and timestamp
-2. **Maintains Installation Database**: Stores tracking information in global and project-specific databases
+2. **Maintains Installation Database**: Stores tracking information in a single global database
 3. **Enables Safe Operations**: Allows for clean uninstalls and selective updates
 
 ## Installation Database
 
-### Database Locations
+### Database Location
 
-- **Global installations**: `~/.config/airuler/installations.yaml` (Linux/macOS) or `%APPDATA%\airuler\installations.yaml` (Windows)
-- **Project installations**: `./.airuler/installations.yaml` in each project directory
+- **Installation database**: `~/.config/airuler/airuler.installs` (Linux/macOS) or `%APPDATA%\airuler\airuler.installs` (Windows)
+
+All installations (both global and project-specific) are tracked in this single global database file. Project installations are distinguished by the `global: false` flag and the `project_path` field.
 
 ### Database Structure
 
 ```yaml
 installations:
-  - id: "uuid-1234-5678"
-    target: "claude"
+  - target: "claude"
     rule: "coding-standards"
-    mode: "memory"
-    file: "/path/to/project/CLAUDE.md"
+    global: false
     project_path: "/path/to/project"
+    mode: "memory"
     installed_at: "2024-01-15T10:30:00Z"
-    content_hash: "abc123def456"
-    backup_file: "CLAUDE.md.backup.20240115-103000"
+    file_path: "/path/to/project/CLAUDE.md"
   
-  - id: "uuid-2345-6789"
-    target: "cursor"
+  - target: "cursor"
     rule: "security-guide"
+    global: true
+    project_path: ""
     mode: "normal"
-    file: "/path/to/.cursor/rules/security-guide.mdc"
-    project_path: ""  # Empty for global installations
     installed_at: "2024-01-15T11:00:00Z"
-    content_hash: "def456ghi789"
+    file_path: "/home/user/.cursor/rules/security-guide.mdc"
 ```
 
 ## Key Benefits
@@ -59,12 +57,6 @@ airuler list-installed
 
 # Filter by keyword
 airuler list-installed --filter cursor
-
-# Show global installations only
-airuler list-installed --global
-
-# Show project installations only  
-airuler list-installed --project
 ```
 
 ### Example Output
@@ -87,11 +79,9 @@ cursor   project-rules        normal   project-rules.mdc         3 hours ago
 
 ### Filter Options
 
-| Flag | Description | Example |
-|------|-------------|---------|
+| Flag                 | Description                     | Example           |
+|----------------------|---------------------------------|-------------------|
 | `--filter <keyword>` | Filter by target, rule, or file | `--filter claude` |
-| `--global` | Show only global installations | `--global` |
-| `--project` | Show only project installations | `--project` |
 
 ## Updating Installed Templates
 
@@ -108,10 +98,10 @@ airuler update-installed --global
 airuler update-installed --project
 
 # Update specific target
-airuler update-installed --target claude
+airuler update-installed claude
 
 # Update specific rule
-airuler update-installed --rule coding-standards
+airuler update-installed claude coding-standards
 ```
 
 ### Update Process
@@ -120,7 +110,7 @@ The update process:
 1. **Recompiles templates** from current source
 2. **Compares content** with installed versions using hash comparison
 3. **Updates only if changed** to avoid unnecessary file modifications
-4. **Creates backups** before overwriting (e.g., `rule.md.backup.20240115-143022`)
+4. **Creates backups** of target files before overwriting (e.g., `rule.md.backup.20240115-143022`)
 5. **Updates tracking database** with new timestamps and content hashes
 
 ### Update Options
@@ -129,9 +119,6 @@ The update process:
 |------|-------------|---------|
 | `--global` | Update only global installations | `--global` |
 | `--project` | Update only project installations | `--project` |
-| `--target <name>` | Update specific target | `--target claude` |
-| `--rule <name>` | Update specific rule | `--rule security-guide` |
-| `--force` | Update even if content unchanged | `--force` |
 
 ## Uninstalling Templates
 
@@ -165,8 +152,9 @@ airuler uninstall --project
 1. **Identifies tracked files** from installation database
 2. **Prompts for confirmation** (unless using `--force`)
 3. **Removes only airuler-installed files** (never removes user files)
-4. **Restores backups** if available and requested
-5. **Updates installation database** to remove uninstalled entries
+4. **Updates installation database** to remove uninstalled entries
+
+Note: Backups of target files created during installation are not automatically restored. They remain in the target directories with `.backup.timestamp` suffixes.
 
 ### Uninstall Options
 
@@ -176,7 +164,6 @@ airuler uninstall --project
 | `--force` | Skip confirmation prompts |
 | `--global` | Uninstall only global installations |
 | `--project` | Uninstall only project installations |
-| `--restore-backups` | Restore original files from backups |
 
 ## Installation Modes and Tracking
 
@@ -210,10 +197,10 @@ airuler tracks different installation types:
 
 ### Backup Creation
 
-- **Automatic backups**: Original files are backed up before overwriting
+- **Automatic backups**: Target rule files are backed up before overwriting (not the installation database)
 - **Timestamped names**: `rule.md.backup.20240102-143022`
-- **Content preservation**: Original content is never lost
-- **Restore capability**: Backups can be restored during uninstall
+- **Backup location**: Same directory as the target file
+- **Skip with --force**: The `--force` flag skips backup creation
 
 ### Collision Detection
 
@@ -246,22 +233,17 @@ If you need to manually inspect or modify the installation database:
 airuler config path  # Shows config directory locations
 
 # Database files are located at:
-# ~/.config/airuler/installations.yaml (global)
-# ./.airuler/installations.yaml (project-specific)
+# ~/.config/airuler/airuler.installs (global)
 ```
 
-### Database Repair
+### Database Management
 
-```bash
-# Validate installation database
-airuler validate-installations
+The installation database is automatically managed by airuler. If you encounter issues with corrupted or missing installation records, you can:
 
-# Repair corrupted database
-airuler repair-installations
-
-# Clean orphaned entries
-airuler clean-installations
-```
+1. Check the database file location using `airuler config path`
+2. Manually inspect the YAML file if needed
+3. Remove corrupted entries by editing the file directly
+4. Reinstall templates to recreate tracking records
 
 ## Advanced Installation Scenarios
 
@@ -321,11 +303,11 @@ airuler update-installed --rule security-standards
 
 **Installation database corruption**:
 ```bash
-# Repair database
-airuler repair-installations
+# Check database location
+airuler config path
 
-# Rebuild from file system
-airuler rebuild-installations
+# Inspect database file manually
+cat ~/.config/airuler/airuler.installs
 ```
 
 **Missing backup files**:
@@ -333,18 +315,17 @@ airuler rebuild-installations
 # Check backup locations
 ls -la *.backup.*
 
-# Recreate installation entry
-airuler track-existing-installation <file>
+# Reinstall to recreate tracking
+airuler install
 ```
 
 **Permission issues**:
 ```bash
 # Check file permissions
 ls -la ~/.config/airuler/
-ls -la ./.airuler/
 
 # Fix permissions
-chmod 644 ~/.config/airuler/installations.yaml
+chmod 644 ~/.config/airuler/airuler.installs
 chmod 755 ~/.config/airuler/
 ```
 
@@ -360,26 +341,26 @@ airuler install --project "$(pwd)/project"
 ### Debugging Commands
 
 ```bash
-# Verbose installation output
-airuler install --verbose
+# View installation details
+airuler list-installed
 
-# Debug installation tracking
-airuler list-installed --debug
+# Install with confirmation prompts
+airuler install --interactive
 
-# Validate installation state
-airuler validate-installations --verbose
+# Force reinstall to fix tracking
+airuler install --force
 ```
 
 ### Recovery Procedures
 
 **Lost installation database**:
-1. Check backup locations: `~/.config/airuler/installations.yaml.backup`
-2. Rebuild from filesystem: `airuler rebuild-installations`
-3. Manually recreate entries: `airuler track-existing-installation`
+1. The database file is not automatically backed up
+2. Recreate by reinstalling: `airuler install --force`
+3. Check config path: `airuler config path`
 
 **Corrupted installations**:
-1. Backup current database: `cp installations.yaml installations.yaml.backup`
-2. Run repair: `airuler repair-installations`
+1. Manually backup current database: `cp ~/.config/airuler/airuler.installs ~/.config/airuler/airuler.installs.backup`
+2. Edit file manually or remove corrupted entries
 3. Verify results: `airuler list-installed`
 
 ## Best Practices
@@ -391,16 +372,10 @@ airuler validate-installations --verbose
 4. **Backup management**: Periodically clean old backup files
 
 ### Database Maintenance
-- **Regular validation**: Run `validate-installations` monthly
-- **Cleanup orphans**: Remove entries for deleted projects
+- **Regular review**: Run `list-installed` to review current installations
+- **Cleanup orphans**: Remove entries for deleted projects manually
 - **Version control**: Include project `.airuler/` in git (if applicable)
-- **Backup database**: Keep backups of installation database
-
-### Security Considerations
-- **File permissions**: Ensure database files have appropriate permissions
-- **Path validation**: Use absolute paths to prevent directory traversal
-- **Content verification**: Verify file content before sensitive operations
-- **Audit trail**: Maintain logs of installation operations
+- **Backup database**: Manually backup the installation database periodically
 
 ## See Also
 
