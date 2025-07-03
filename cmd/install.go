@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"sort"
 	"strings"
 	"time"
@@ -359,13 +360,7 @@ func installCopilotRules(compiledDir string, files []os.DirEntry) (int, error) {
 	var newlyInstalledCount int
 	if installRule != "" {
 		// If specific rule was requested, check if it's actually new
-		wasExisting := false
-		for _, existingName := range existingRuleNames {
-			if existingName == installRule {
-				wasExisting = true
-				break
-			}
-		}
+		wasExisting := slices.Contains(existingRuleNames, installRule)
 
 		if !wasExisting {
 			if err := recordInstallation(compiler.TargetCopilot, installRule, targetPath, ""); err != nil {
@@ -378,13 +373,7 @@ func installCopilotRules(compiledDir string, files []os.DirEntry) (int, error) {
 		// Record each new template that was added
 		for _, ruleName := range newRuleNames {
 			// Only record if this rule wasn't already installed
-			wasExisting := false
-			for _, existingName := range existingRuleNames {
-				if existingName == ruleName {
-					wasExisting = true
-					break
-				}
-			}
+			wasExisting := slices.Contains(existingRuleNames, ruleName)
 
 			if !wasExisting {
 				if err := recordInstallation(compiler.TargetCopilot, ruleName, targetPath, ""); err != nil {
@@ -544,13 +533,7 @@ func installGeminiRules(compiledDir string, files []os.DirEntry) (int, error) {
 	var newlyInstalledCount int
 	if installRule != "" {
 		// If specific rule was requested, check if it's actually new
-		wasExisting := false
-		for _, existingName := range existingRuleNames {
-			if existingName == installRule {
-				wasExisting = true
-				break
-			}
-		}
+		wasExisting := slices.Contains(existingRuleNames, installRule)
 
 		if !wasExisting {
 			mode := ""
@@ -567,13 +550,7 @@ func installGeminiRules(compiledDir string, files []os.DirEntry) (int, error) {
 		// Record each new template that was added
 		for _, ruleName := range newRuleNames {
 			// Only record if this rule wasn't already installed
-			wasExisting := false
-			for _, existingName := range existingRuleNames {
-				if existingName == ruleName {
-					wasExisting = true
-					break
-				}
-			}
+			wasExisting := slices.Contains(existingRuleNames, ruleName)
 
 			if !wasExisting {
 				mode := ""
