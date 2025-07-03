@@ -239,22 +239,24 @@ When reviewing code, focus on:
 {{end}}
 ` + "```" + `
 
-### 2. Compile Rules
+### 2. Sync Everything
 
-Generate target-specific rules:
+Use the streamlined sync workflow for daily development:
 
 ` + "```" + `bash
-airuler compile              # Compile for all targets
-airuler compile claude       # Compile for specific target
+airuler sync                 # Full workflow: update vendors → compile → deploy
+airuler sync claude          # Sync only for Claude target
+airuler sync --no-update     # Skip vendor updates
 ` + "```" + `
 
-### 3. Install Rules
+### 3. Deploy Fresh Installations
 
-Install compiled rules to your AI tools:
+Deploy compiled rules to new locations:
 
 ` + "```" + `bash
-airuler install claude --global    # Install globally
-airuler install claude --project . # Install for current project
+airuler deploy --global      # Deploy globally for all targets
+airuler deploy --project .   # Deploy for current project
+airuler deploy --interactive # Interactive template selection
 ` + "```" + `
 
 ### 4. Manage Vendors
@@ -262,18 +264,18 @@ airuler install claude --project . # Install for current project
 Fetch and manage external rule repositories:
 
 ` + "```" + `bash
-airuler fetch https://github.com/user/rules-repo  # Add vendor
-airuler update                                    # Update vendors
+airuler vendors add https://github.com/user/rules-repo  # Add vendor
+airuler vendors update                                  # Update vendors
 ` + "```" + `
 
 ## Available Commands
 
-- ` + "`airuler compile`" + ` - Compile templates into target-specific rules
-- ` + "`airuler install`" + ` - Install compiled rules to AI tools  
-- ` + "`airuler fetch`" + ` - Fetch external rule repositories
-- ` + "`airuler update`" + ` - Update vendor repositories
-- ` + "`airuler vendors list`" + ` - List available vendors
-- ` + "`airuler vendors config`" + ` - View vendor configurations
+- ` + "`airuler sync`" + ` - Main workflow: update vendors → compile → deploy
+- ` + "`airuler deploy`" + ` - Compile templates and install to new locations
+- ` + "`airuler manage`" + ` - Interactive management hub for all operations
+- ` + "`airuler vendors`" + ` - Manage vendor repositories (add, update, list, config)
+- ` + "`airuler init`" + ` - Initialize new airuler projects
+- ` + "`airuler watch`" + ` - Watch templates and auto-compile on changes
 
 ## Configuration
 
@@ -487,12 +489,12 @@ description: "Standard footer component"
 	if targetPath != "." {
 		fmt.Printf("  1. cd %s\n", targetPath)
 		fmt.Println("  2. Add your templates to templates/")
-		fmt.Println("  3. Run 'airuler compile' to generate rules")
-		fmt.Println("  4. Run 'airuler install' to install rules")
+		fmt.Println("  3. Run 'airuler sync' for the complete workflow")
+		fmt.Println("  4. Use 'airuler deploy --interactive' for guided setup")
 	} else {
 		fmt.Println("  1. Add your templates to templates/")
-		fmt.Println("  2. Run 'airuler compile' to generate rules")
-		fmt.Println("  3. Run 'airuler install' to install rules")
+		fmt.Println("  2. Run 'airuler sync' for the complete workflow")
+		fmt.Println("  3. Use 'airuler deploy --interactive' for guided setup")
 	}
 
 	// Restore original directory if we changed it

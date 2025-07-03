@@ -24,15 +24,22 @@ Use subcommands to list, check status, or remove vendors.`,
 }
 
 var vendorsListCmd = &cobra.Command{
-	Use:   "list",
-	Short: "List all vendors",
-	Long:  `List all vendor repositories with their details.`,
-	RunE: func(_ *cobra.Command, _ []string) error {
-		manager, err := createVendorManager()
-		if err != nil {
-			return err
+	Use:   "list [vendor]",
+	Short: "List vendors with repository and configuration details",
+	Long: `List vendor repositories with their details and configurations.
+
+When no vendor is specified, shows all vendors with basic info and config summaries.
+When a specific vendor is provided, shows detailed configuration for that vendor.
+
+Examples:
+  airuler vendors list              # List all vendors with summaries
+  airuler vendors list my-rules     # Show detailed config for my-rules vendor`,
+	Args: cobra.MaximumNArgs(1),
+	RunE: func(_ *cobra.Command, args []string) error {
+		if len(args) == 0 {
+			return showCombinedVendorList()
 		}
-		return manager.List()
+		return showDetailedVendorConfig(args[0])
 	},
 }
 
@@ -114,13 +121,82 @@ var vendorsExcludeAllCmd = &cobra.Command{
 	},
 }
 
-var vendorsConfigCmd = &cobra.Command{
-	Use:   "config [vendor]",
-	Short: "View vendor configurations",
-	Long:  `View vendor configurations. If no vendor is specified, shows all vendor configs.`,
-	Args:  cobra.MaximumNArgs(1),
+var (
+	fetchAlias  string
+	fetchUpdate bool
+)
+
+var vendorsAddCmd = &cobra.Command{
+	Use:   "add <git-url>",
+	Short: "Add a new vendor repository",
+	Long: `Add a new vendor repository from a Git URL.
+
+Examples:
+  airuler vendors add https://github.com/user/rules-repo
+  airuler vendors add https://github.com/user/rules-repo --as my-rules
+  airuler vendors add https://github.com/user/rules-repo --update`,
+	Args: cobra.ExactArgs(1),
 	RunE: func(_ *cobra.Command, args []string) error {
-		return showVendorConfigs(args)
+		// Reuse fetch command logic
+		url := args[0]
+
+		// Load config
+		cfg := config.NewDefaultConfig()
+		if viper.ConfigFileUsed() != "" {
+			if err := viper.Unmarshal(cfg); err != nil {
+				return fmt.Errorf("failed to load config: %w", err)
+			}
+		}
+
+		// Create vendor manager
+		manager := vendor.NewManager(cfg)
+		if err := manager.LoadLockFile(); err != nil {
+			return fmt.Errorf("failed to load lock file: %w", err)
+		}
+
+		return manager.Fetch(url, fetchAlias, fetchUpdate)
+	},
+}
+
+var vendorsUpdateCmd = &cobra.Command{
+	Use:   "update [vendor...]",
+	Short: "Update vendor repositories",
+	Long: `Update vendor repositories to their latest versions.
+
+If no vendors are specified, all vendors will be updated.
+
+Examples:
+  airuler vendors update              # Update all vendors
+  airuler vendors update my-rules     # Update specific vendor
+  airuler vendors update frontend,backend # Update multiple vendors`,
+	RunE: func(_ *cobra.Command, args []string) error {
+		// Load config
+		cfg := config.NewDefaultConfig()
+		if viper.ConfigFileUsed() != "" {
+			if err := viper.Unmarshal(cfg); err != nil {
+				return fmt.Errorf("failed to load config: %w", err)
+			}
+		}
+
+		// Create vendor manager
+		manager := vendor.NewManager(cfg)
+		if err := manager.LoadLockFile(); err != nil {
+			return fmt.Errorf("failed to load lock file: %w", err)
+		}
+
+		// Parse vendor names
+		var vendorNames []string
+		if len(args) > 0 {
+			for _, arg := range args {
+				names := strings.Split(arg, ",")
+				for _, name := range names {
+					vendorNames = append(vendorNames, strings.TrimSpace(name))
+				}
+			}
+		}
+
+		// Update vendors
+		return manager.Update(vendorNames)
 	},
 }
 
@@ -128,6 +204,8 @@ func init() {
 	rootCmd.AddCommand(vendorsCmd)
 
 	vendorsCmd.AddCommand(vendorsListCmd)
+	vendorsCmd.AddCommand(vendorsAddCmd)
+	vendorsCmd.AddCommand(vendorsUpdateCmd)
 	vendorsCmd.AddCommand(vendorsStatusCmd)
 	vendorsCmd.AddCommand(vendorsCheckCmd)
 	vendorsCmd.AddCommand(vendorsRemoveCmd)
@@ -135,7 +213,10 @@ func init() {
 	vendorsCmd.AddCommand(vendorsExcludeCmd)
 	vendorsCmd.AddCommand(vendorsIncludeAllCmd)
 	vendorsCmd.AddCommand(vendorsExcludeAllCmd)
-	vendorsCmd.AddCommand(vendorsConfigCmd)
+
+	// Add flags for the add command (reuse fetch flags)
+	vendorsAddCmd.Flags().StringVarP(&fetchAlias, "as", "a", "", "alias for the vendor")
+	vendorsAddCmd.Flags().BoolVarP(&fetchUpdate, "update", "u", false, "update if vendor already exists")
 }
 
 func createVendorManager() (*vendor.Manager, error) {
@@ -242,8 +323,95 @@ func setIncludeVendorsAll(includeAll bool) error {
 	return saveProjectConfig(cfg)
 }
 
-// showVendorConfigs displays vendor configurations
-func showVendorConfigs(args []string) error {
+func getStringOrDefault(value, defaultValue string) string {
+	if value == "" {
+		return defaultValue
+	}
+	return value
+}
+
+func getVendorTargetNames(targets map[string]config.TargetConfig) []string {
+	var names []string
+	for target := range targets {
+		names = append(names, target)
+	}
+	return names
+}
+
+// showCombinedVendorList displays both repository info and config summaries for all vendors
+func showCombinedVendorList() error {
+	// Get vendor manager for repository info
+	manager, err := createVendorManager()
+	if err != nil {
+		return err
+	}
+
+	// Get current working directory for config loading
+	currentDir, err := os.Getwd()
+	if err != nil {
+		return fmt.Errorf("failed to get current directory: %w", err)
+	}
+
+	// Load project configuration
+	projectConfig, err := loadProjectConfig()
+	if err != nil {
+		return fmt.Errorf("failed to load project config: %w", err)
+	}
+
+	// Load vendor configurations
+	vendorConfigs, err := config.LoadVendorConfigs(currentDir, projectConfig)
+	if err != nil {
+		return fmt.Errorf("failed to load vendor configurations: %w", err)
+	}
+
+	// Get vendor repository info
+	lockFile := manager.GetLockFile()
+	if len(lockFile.Vendors) == 0 {
+		fmt.Println("No vendors found")
+		return nil
+	}
+
+	fmt.Println("📦 Vendors")
+	fmt.Println("==========")
+
+	for vendorName, vendorData := range lockFile.Vendors {
+		fmt.Printf("\n🏷️  %s\n", vendorName)
+
+		// Repository info
+		fmt.Printf("   %-20s %s\n", "URL:", vendorData.URL)
+		fmt.Printf("   %-20s %s\n", "Commit:", vendorData.Commit)
+		fmt.Printf("   %-20s %s\n", "Fetched:", vendorData.FetchedAt.Format("2006-01-02 15:04:05"))
+
+		// Configuration info (if available)
+		if vendorConfig, exists := vendorConfigs.VendorConfigs[vendorName]; exists {
+			if vendorConfig.Vendor.Name != "" && vendorConfig.Vendor.Name != vendorName {
+				fmt.Printf("   %-20s %s\n", "Name:", vendorConfig.Vendor.Name)
+			}
+			if vendorConfig.Vendor.Description != "" {
+				fmt.Printf("   %-20s %s\n", "Description:", vendorConfig.Vendor.Description)
+			}
+			if vendorConfig.Vendor.Version != "" {
+				fmt.Printf("   %-20s %s\n", "Version:", vendorConfig.Vendor.Version)
+			}
+			if len(vendorConfig.TemplateDefaults) > 0 {
+				fmt.Printf("   %-20s %d defaults\n", "Template Defaults:", len(vendorConfig.TemplateDefaults))
+			}
+			if len(vendorConfig.Variables) > 0 {
+				fmt.Printf("   %-20s %d variables\n", "Variables:", len(vendorConfig.Variables))
+			}
+			if len(vendorConfig.Targets) > 0 {
+				fmt.Printf("   %-20s %v\n", "Target Configs:", getVendorTargetNames(vendorConfig.Targets))
+			}
+		} else {
+			fmt.Printf("   %-20s %s\n", "Config:", "No configuration found")
+		}
+	}
+
+	return nil
+}
+
+// showDetailedVendorConfig displays detailed configuration for a specific vendor
+func showDetailedVendorConfig(vendorName string) error {
 	// Get current working directory
 	currentDir, err := os.Getwd()
 	if err != nil {
@@ -262,44 +430,35 @@ func showVendorConfigs(args []string) error {
 		return fmt.Errorf("failed to load vendor configurations: %w", err)
 	}
 
-	if len(args) == 0 {
-		// Show all vendor configurations
-		fmt.Println("📦 Vendor Configurations")
-		fmt.Println("========================")
+	// Check if vendor exists in repository
+	manager, err := createVendorManager()
+	if err != nil {
+		return err
+	}
 
-		if len(vendorConfigs.VendorConfigs) == 0 {
-			fmt.Println("No vendor configurations found.")
-			return nil
-		}
+	lockFile := manager.GetLockFile()
+	vendorData, repoExists := lockFile.Vendors[vendorName]
 
-		for vendorName, vendorConfig := range vendorConfigs.VendorConfigs {
-			fmt.Printf("\n🏷️  %s\n", vendorName)
-			fmt.Printf("   %-20s %s\n", "Name:", getStringOrDefault(vendorConfig.Vendor.Name, vendorName))
-			fmt.Printf("   %-20s %s\n", "Description:", getStringOrDefault(vendorConfig.Vendor.Description, "No description"))
-			fmt.Printf("   %-20s %s\n", "Version:", getStringOrDefault(vendorConfig.Vendor.Version, "Unknown"))
+	// Check if vendor config exists
+	vendorConfig, configExists := vendorConfigs.VendorConfigs[vendorName]
 
-			if len(vendorConfig.TemplateDefaults) > 0 {
-				fmt.Printf("   %-20s %d defaults\n", "Template Defaults:", len(vendorConfig.TemplateDefaults))
-			}
-			if len(vendorConfig.Variables) > 0 {
-				fmt.Printf("   %-20s %d variables\n", "Variables:", len(vendorConfig.Variables))
-			}
-			if len(vendorConfig.Targets) > 0 {
-				fmt.Printf("   %-20s %v\n", "Target Configs:", getVendorTargetNames(vendorConfig.Targets))
-			}
-		}
-	} else {
-		// Show specific vendor configuration
-		vendorName := args[0]
-		vendorConfig, exists := vendorConfigs.VendorConfigs[vendorName]
-		if !exists {
-			return fmt.Errorf("vendor '%s' not found", vendorName)
-		}
+	if !repoExists && !configExists {
+		return fmt.Errorf("vendor '%s' not found", vendorName)
+	}
 
-		fmt.Printf("📦 Vendor Configuration: %s\n", vendorName)
-		fmt.Println("=" + strings.Repeat("=", len(vendorName)+25))
+	fmt.Printf("📦 Vendor: %s\n", vendorName)
+	fmt.Println("=" + strings.Repeat("=", len(vendorName)+9))
 
-		// Vendor manifest
+	// Repository information
+	if repoExists {
+		fmt.Println("\n📂 Repository Information:")
+		fmt.Printf("   URL:     %s\n", vendorData.URL)
+		fmt.Printf("   Commit:  %s\n", vendorData.Commit)
+		fmt.Printf("   Fetched: %s\n", vendorData.FetchedAt.Format("2006-01-02 15:04:05"))
+	}
+
+	// Configuration information
+	if configExists {
 		fmt.Println("\n🏷️  Vendor Information:")
 		fmt.Printf("   Name:        %s\n", getStringOrDefault(vendorConfig.Vendor.Name, vendorName))
 		fmt.Printf("   Description: %s\n", getStringOrDefault(vendorConfig.Vendor.Description, "No description"))
@@ -333,24 +492,9 @@ func showVendorConfigs(args []string) error {
 				}
 			}
 		}
-
-		// Compilation settings section removed - no active compilation config fields
+	} else {
+		fmt.Println("\n🏷️  Configuration: No vendor configuration found")
 	}
 
 	return nil
-}
-
-func getStringOrDefault(value, defaultValue string) string {
-	if value == "" {
-		return defaultValue
-	}
-	return value
-}
-
-func getVendorTargetNames(targets map[string]config.TargetConfig) []string {
-	var names []string
-	for target := range targets {
-		names = append(names, target)
-	}
-	return names
 }

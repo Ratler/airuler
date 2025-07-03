@@ -38,7 +38,7 @@ func init() {
 	cobra.OnInitialize(setupWorkingDirectory)
 
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default: project dir or ~/.config/airuler/airuler.yaml)")
-	rootCmd.PersistentFlags().Bool("verbose", false, "verbose output")
+	rootCmd.PersistentFlags().BoolP("verbose", "v", false, "verbose output")
 	if err := viper.BindPFlag("verbose", rootCmd.PersistentFlags().Lookup("verbose")); err != nil {
 		// This should never happen with a valid flag, but handle it gracefully
 		panic(fmt.Sprintf("failed to bind verbose flag: %v", err))

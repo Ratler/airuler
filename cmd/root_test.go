@@ -71,13 +71,13 @@ func TestRootCommandSubcommands(t *testing.T) {
 	// Check that expected subcommands exist
 	expectedCommands := []string{
 		"init",
-		"compile",
-		"install",
+		"sync",
+		"deploy",
+		"manage",
 		"config",
-		"fetch",
-		"update",
 		"vendors",
 		"watch",
+		"version",
 	}
 
 	commands := rootCmd.Commands()

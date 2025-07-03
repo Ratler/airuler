@@ -9,7 +9,6 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/ratler/airuler/internal/compiler"
 	"github.com/spf13/cobra"
 )
 
@@ -76,8 +75,4 @@ func getLastModTime() (time.Time, error) {
 	})
 
 	return latest, err
-}
-
-func getAllTargets() []compiler.Target {
-	return compiler.AllTargets
 }

@@ -13,17 +13,11 @@ import (
 	"github.com/ratler/airuler/internal/compiler"
 	"github.com/ratler/airuler/internal/config"
 	"github.com/ratler/airuler/internal/template"
-	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	yaml "gopkg.in/yaml.v3"
 )
 
-var (
-	vendorFlag  string
-	vendorsFlag string
-	ruleFlag    string
-)
-
+// TemplateFrontMatter represents the YAML front matter in template files
 type TemplateFrontMatter struct {
 	ClaudeMode  string  `yaml:"claude_mode"`
 	Description string  `yaml:"description"`
@@ -41,61 +35,26 @@ type TemplateFrontMatter struct {
 	Custom        map[string]interface{} `yaml:"custom"`
 }
 
+// TemplateSource represents a template with its source information
 type TemplateSource struct {
 	Content    string
 	SourceType string // "local" or vendor name
 	SourcePath string // full file path
 }
 
-var compileCmd = &cobra.Command{
-	Use:   "compile [target]",
-	Short: "Compile templates into target-specific rules",
-	Long: fmt.Sprintf(`Compile templates into target-specific rules for AI coding assistants.
-
-Available targets: %s
-
-Template files:
-  - .tmpl files are compiled as main templates
-  - .ptmpl files are treated as partials (can be organized anywhere)
-  - Files in partials/ directories are also treated as partials
-
-Examples:
-  airuler compile                    # Compile for all targets
-  airuler compile cursor             # Compile only for Cursor
-  airuler compile --vendor frontend  # Compile from specific vendor
-  airuler compile --rule my-rule     # Compile specific rule`, strings.Join(getTargetNames(), ", ")),
-	Args: cobra.MaximumNArgs(1),
-	RunE: func(_ *cobra.Command, args []string) error {
-		var targets []compiler.Target
-
-		if len(args) > 0 {
-			target := compiler.Target(args[0])
-			if !isValidTarget(target) {
-				return fmt.Errorf("invalid target: %s. Valid targets: %s",
-					target, strings.Join(getTargetNames(), ", "))
-			}
-			targets = []compiler.Target{target}
-		} else {
-			targets = compiler.AllTargets
-		}
-
-		return compileTemplates(targets)
-	},
-}
-
-func init() {
-	rootCmd.AddCommand(compileCmd)
-
-	compileCmd.Flags().StringVarP(&vendorFlag, "vendor", "v", "", "compile from specific vendor")
-	compileCmd.Flags().StringVar(&vendorsFlag, "vendors", "", "compile from specific vendors (comma-separated)")
-	compileCmd.Flags().StringVarP(&ruleFlag, "rule", "r", "", "compile specific rule")
-}
-
+// compileTemplates compiles templates for the given targets
 func compileTemplates(targets []compiler.Target) error {
+	return compileTemplatesWithOutput(targets, true)
+}
+
+// compileTemplatesWithOutput compiles templates with optional output suppression
+func compileTemplatesWithOutput(targets []compiler.Target, showOutput bool) error {
 	// Clean the compiled directory first to ensure a fresh start
 	compiledDir := "compiled"
 	if _, err := os.Stat(compiledDir); err == nil {
-		fmt.Printf("Cleaning compiled directory...\n")
+		if showOutput {
+			fmt.Printf("Cleaning compiled directory...\n")
+		}
 		if err := os.RemoveAll(compiledDir); err != nil {
 			return fmt.Errorf("failed to clean compiled directory: %w", err)
 		}
@@ -135,7 +94,7 @@ func compileTemplates(targets []compiler.Target) error {
 	}
 
 	// Validate vendor configurations
-	if validationErrors := vendorConfigs.ValidateVendorConfigs(); len(validationErrors) > 0 {
+	if validationErrors := vendorConfigs.ValidateVendorConfigs(); len(validationErrors) > 0 && showOutput {
 		fmt.Printf("Warning: Vendor configuration validation errors:\n")
 		for _, err := range validationErrors {
 			fmt.Printf("  - %v\n", err)
@@ -145,33 +104,12 @@ func compileTemplates(targets []compiler.Target) error {
 	// Load templates
 	templateDirs := []string{"templates"}
 
-	// Add vendor directories based on flags or configuration
-	if vendorFlag != "" {
-		vendorDir := filepath.Join("vendors", vendorFlag, "templates")
-		if _, err := os.Stat(vendorDir); err == nil {
-			templateDirs = append(templateDirs, vendorDir)
-		} else {
-			return fmt.Errorf("vendor directory not found: %s", vendorDir)
-		}
-	} else if vendorsFlag != "" {
-		vendors := strings.Split(vendorsFlag, ",")
-		for _, vendor := range vendors {
-			vendor = strings.TrimSpace(vendor)
-			vendorDir := filepath.Join("vendors", vendor, "templates")
-			if _, err := os.Stat(vendorDir); err == nil {
-				templateDirs = append(templateDirs, vendorDir)
-			} else {
-				fmt.Printf("Warning: vendor directory not found: %s\n", vendorDir)
-			}
-		}
-	} else {
-		// Auto-include vendors from configuration and lock file
-		vendorDirs := getVendorTemplateDirs()
-		templateDirs = append(templateDirs, vendorDirs...)
-	}
+	// Add vendor directories
+	vendorDirs := getVendorTemplateDirs()
+	templateDirs = append(templateDirs, vendorDirs...)
 
 	// Load templates and partials from all directories
-	templates, partialsBySource, err := loadTemplatesFromDirs(templateDirs)
+	templates, partialsBySource, err := loadTemplatesFromDirsWithOutput(templateDirs, showOutput)
 	if err != nil {
 		return err
 	}
@@ -180,26 +118,12 @@ func compileTemplates(targets []compiler.Target) error {
 		return fmt.Errorf("no templates found in %s", strings.Join(templateDirs, ", "))
 	}
 
-	// Filter templates by rule if specified
-	if ruleFlag != "" {
-		filtered := make(map[string]TemplateSource)
-		for name, templateSource := range templates {
-			if strings.Contains(name, ruleFlag) {
-				filtered[name] = templateSource
-			}
-		}
-		if len(filtered) == 0 {
-			return fmt.Errorf("no templates found matching rule: %s", ruleFlag)
-		}
-		templates = filtered
-	}
-
-	// Templates will be loaded individually during compilation with front matter stripped
-
 	// Compile for each target
 	compiled := 0
 	for _, target := range targets {
-		fmt.Printf("Compiling for %s...\n", target)
+		if showOutput {
+			fmt.Printf("Compiling for %s...\n", target)
+		}
 
 		targetDir := filepath.Join("compiled", string(target))
 		if err := os.MkdirAll(targetDir, 0755); err != nil {
@@ -216,7 +140,7 @@ func compileTemplates(targets []compiler.Target) error {
 
 			// Load only partials from the same source as this template
 			if sourcePartials, exists := partialsBySource[templateSource.SourceType]; exists {
-				if viper.GetBool("verbose") && len(sourcePartials) > 0 {
+				if viper.GetBool("verbose") && len(sourcePartials) > 0 && showOutput {
 					fmt.Printf(
 						"Loading %d partials for %s template %s...\n",
 						len(sourcePartials),
@@ -228,15 +152,17 @@ func compileTemplates(targets []compiler.Target) error {
 					// Strip front matter from partial content before loading
 					cleanPartialContent := stripTemplateFrontMatter(partialContent)
 					if err := templateComp.LoadTemplate(partialName, cleanPartialContent); err != nil {
-						fmt.Printf("Warning: failed to load partial %s: %v\n", partialName, err)
-					} else if viper.GetBool("verbose") {
+						if showOutput {
+							fmt.Printf("Warning: failed to load partial %s: %v\n", partialName, err)
+						}
+					} else if viper.GetBool("verbose") && showOutput {
 						fmt.Printf("  ✓ Loaded partial: %s\n", partialName)
 					}
 				}
 			}
 			// Parse front matter to get template metadata
 			frontMatter, err := parseTemplateFrontMatter(templateSource.Content)
-			if err != nil {
+			if err != nil && showOutput {
 				fmt.Printf("Warning: failed to parse front matter for %s: %v\n", templateName, err)
 			}
 
@@ -256,13 +182,17 @@ func compileTemplates(targets []compiler.Target) error {
 
 			// Load the clean template content (without front matter)
 			if err := templateComp.LoadTemplate(templateName, cleanTemplateContent); err != nil {
-				fmt.Printf("Warning: failed to load template %s: %v\n", templateName, err)
+				if showOutput {
+					fmt.Printf("Warning: failed to load template %s: %v\n", templateName, err)
+				}
 				continue
 			}
 
 			rules, err := templateComp.CompileTemplateWithModes(templateName, target, data)
 			if err != nil {
-				fmt.Printf("Warning: failed to compile %s for %s: %v\n", templateName, target, err)
+				if showOutput {
+					fmt.Printf("Warning: failed to compile %s for %s: %v\n", templateName, target, err)
+				}
 				continue
 			}
 
@@ -274,7 +204,9 @@ func compileTemplates(targets []compiler.Target) error {
 				if target == compiler.TargetClaude && rule.Mode == "memory" {
 					memoryModeContent = append(memoryModeContent, rule.Content)
 					compiled++
-					fmt.Printf("  ✅ %s (memory) -> CLAUDE.md (queued)\n", displayName)
+					if showOutput {
+						fmt.Printf("  ✅ %s (memory) -> CLAUDE.md (queued)\n", displayName)
+					}
 				} else {
 					// Regular file writing for non-memory mode
 					outputPath := templateComp.GetOutputPath(target, rule.Filename)
@@ -287,7 +219,9 @@ func compileTemplates(targets []compiler.Target) error {
 					if rule.Mode != "" && rule.Mode != "command" {
 						modeDesc = fmt.Sprintf(" (%s)", rule.Mode)
 					}
-					fmt.Printf("  ✅ %s%s -> %s\n", displayName, modeDesc, outputPath)
+					if showOutput {
+						fmt.Printf("  ✅ %s%s -> %s\n", displayName, modeDesc, outputPath)
+					}
 				}
 			}
 		}
@@ -303,15 +237,19 @@ func compileTemplates(targets []compiler.Target) error {
 			if err := os.WriteFile(claudeMdPath, []byte(combinedContent), 0600); err != nil {
 				return fmt.Errorf("failed to write CLAUDE.md: %w", err)
 			}
-			fmt.Printf("  ✅ Combined %d memory templates -> %s\n", len(memoryModeContent), claudeMdPath)
+			if showOutput {
+				fmt.Printf("  ✅ Combined %d memory templates -> %s\n", len(memoryModeContent), claudeMdPath)
+			}
 		}
 	}
 
-	fmt.Printf("\n🎉 Successfully compiled %d rules for %d targets\n", len(templates), len(targets))
+	if showOutput {
+		fmt.Printf("\n🎉 Successfully compiled %d rules for %d targets\n", len(templates), len(targets))
+	}
 
 	// Update last template directory after successful compilation
 	if err == nil && config.IsTemplateDirectory(currentDir) {
-		if err := config.UpdateLastTemplateDir(currentDir); err != nil && viper.GetBool("verbose") {
+		if err := config.UpdateLastTemplateDir(currentDir); err != nil && viper.GetBool("verbose") && showOutput {
 			fmt.Printf("Warning: Failed to update last template directory: %v\n", err)
 		}
 	}
@@ -319,7 +257,13 @@ func compileTemplates(targets []compiler.Target) error {
 	return nil
 }
 
+// loadTemplatesFromDirs loads templates and partials from multiple directories
 func loadTemplatesFromDirs(dirs []string) (map[string]TemplateSource, map[string]map[string]string, error) {
+	return loadTemplatesFromDirsWithOutput(dirs, true)
+}
+
+// loadTemplatesFromDirsWithOutput loads templates and partials with optional output suppression
+func loadTemplatesFromDirsWithOutput(dirs []string, showOutput bool) (map[string]TemplateSource, map[string]map[string]string, error) {
 	templates := make(map[string]TemplateSource)           // Main templates to compile individually
 	partialsBySource := make(map[string]map[string]string) // Partials organized by source
 	conflicts := make(map[string][]TemplateSource)         // Track conflicts for reporting
@@ -436,18 +380,20 @@ func loadTemplatesFromDirs(dirs []string) (map[string]TemplateSource, map[string
 			}
 
 			// Display conflict info
-			fmt.Printf("⚠️  Template '%s' found in multiple sources\n", templateName)
+			if showOutput {
+				fmt.Printf("⚠️  Template '%s' found in multiple sources\n", templateName)
 
-			// Show what's being used
-			icon := "✅"
-			if used.SourceType == "local" {
-				icon = "🏠"
-			}
-			fmt.Printf("  %s Using: %s (%s)\n", icon, used.SourceType, used.SourcePath)
+				// Show what's being used
+				icon := "✅"
+				if used.SourceType == "local" {
+					icon = "🏠"
+				}
+				fmt.Printf("  %s Using: %s (%s)\n", icon, used.SourceType, used.SourcePath)
 
-			// Show what's being ignored
-			for _, ignoredSource := range ignored {
-				fmt.Printf("  ❌ Ignoring: %s (%s)\n", ignoredSource.SourceType, ignoredSource.SourcePath)
+				// Show what's being ignored
+				for _, ignoredSource := range ignored {
+					fmt.Printf("  ❌ Ignoring: %s (%s)\n", ignoredSource.SourceType, ignoredSource.SourcePath)
+				}
 			}
 		}
 	}
@@ -455,18 +401,12 @@ func loadTemplatesFromDirs(dirs []string) (map[string]TemplateSource, map[string
 	return templates, partialsBySource, nil
 }
 
+// isValidTarget checks if a target is valid
 func isValidTarget(target compiler.Target) bool {
 	return slices.Contains(compiler.AllTargets, target)
 }
 
-func getTargetNames() []string {
-	var names []string
-	for _, target := range compiler.AllTargets {
-		names = append(names, string(target))
-	}
-	return names
-}
-
+// parseTemplateFrontMatter parses YAML front matter from template content
 func parseTemplateFrontMatter(content string) (*TemplateFrontMatter, error) {
 	frontMatter := &TemplateFrontMatter{}
 
@@ -494,20 +434,7 @@ func parseTemplateFrontMatter(content string) (*TemplateFrontMatter, error) {
 	return frontMatter, nil
 }
 
-func getValueOrDefault(value, defaultValue string) string {
-	if value == "" {
-		return defaultValue
-	}
-	return value
-}
-
-func getGlobsValue(globs *string) string {
-	if globs == nil {
-		return "**/*"
-	}
-	return *globs
-}
-
+// stripTemplateFrontMatter removes YAML front matter from template content
 func stripTemplateFrontMatter(content string) string {
 	// Check if content starts with YAML front matter
 	if !strings.HasPrefix(content, "---") {
@@ -524,6 +451,7 @@ func stripTemplateFrontMatter(content string) string {
 	return strings.TrimSpace(parts[2])
 }
 
+// getVendorTemplateDirs returns vendor template directories based on configuration
 func getVendorTemplateDirs() []string {
 	var vendorDirs []string
 
@@ -670,6 +598,21 @@ func createTemplateData(
 	return data
 }
 
+// Helper functions
+func getValueOrDefault(value, defaultValue string) string {
+	if value == "" {
+		return defaultValue
+	}
+	return value
+}
+
+func getGlobsValue(globs *string) string {
+	if globs == nil {
+		return "**/*"
+	}
+	return *globs
+}
+
 // applyVendorDefaults applies vendor default values to template data
 func applyVendorDefaults(data *template.Data, defaults map[string]interface{}) {
 	if projectType, ok := defaults["project_type"].(string); ok && data.ProjectType == "" {
@@ -720,4 +663,9 @@ func getStringFromVendorDefaults(defaults map[string]interface{}, key, fallback 
 		return value
 	}
 	return fallback
+}
+
+// getAllTargets returns all available targets
+func getAllTargets() []compiler.Target {
+	return compiler.AllTargets
 }

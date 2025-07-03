@@ -59,6 +59,10 @@ func (m *Manager) SaveLockFile() error {
 	return os.WriteFile("airuler.lock", data, 0600)
 }
 
+func (m *Manager) GetLockFile() *config.LockFile {
+	return m.lockFile
+}
+
 func (m *Manager) Fetch(url, alias string, update bool) error {
 	dirName := git.URLToDirectoryName(url)
 	if alias != "" {
