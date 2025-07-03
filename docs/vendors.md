@@ -5,32 +5,33 @@ Fetch and manage external rule repositories to share templates across projects.
 ## Overview
 
 Vendors allow you to:
+
 - Share templates across multiple projects
 - Maintain centralized rule repositories
 - Version control shared coding standards
 - Collaborate on template development
 
-## Fetching External Repositories
+## Adding External Repositories
 
-### Basic Fetch Operations
+### Basic Add Operations
 
 ```bash
-# Fetch from Git repository
-airuler fetch https://github.com/company/frontend-rules
+# Add from Git repository
+airuler vendors add https://github.com/company/frontend-rules
 
-# Fetch with custom alias
-airuler fetch https://github.com/company/backend-rules --as backend
+# Add with custom alias
+airuler vendors add https://github.com/company/backend-rules --as backend
 
-# Update existing vendor
-airuler fetch https://github.com/company/frontend-rules --update
+# Update existing vendor during add
+airuler vendors add https://github.com/company/frontend-rules --update
 ```
 
-### Fetch Options
+### Add Options
 
-| Flag | Description | Example |
-|------|-------------|---------|
-| `--as <alias>` | Set custom vendor name | `--as backend` |
-| `--update` | Update existing vendor repository | `--update` |
+| Flag           | Short | Description                       | Example        |
+| -------------- | ----- | --------------------------------- | -------------- |
+| `--as <alias>` | `-a`  | Set custom vendor name            | `--as backend` |
+| `--update`     | `-u`  | Update existing vendor repository | `--update`     |
 
 ## Updating Vendors
 
@@ -38,43 +39,47 @@ airuler fetch https://github.com/company/frontend-rules --update
 
 ```bash
 # Update all vendors
-airuler update
+airuler vendors update
 
 # Update specific vendor
-airuler update backend
+airuler vendors update backend
 
-# Check for updates without fetching
-airuler update --dry-run
-
-# Interactive update mode
-airuler update --interactive
+# Update multiple vendors
+airuler vendors update frontend,backend
 ```
 
-### Update Options
+### Update Notes
 
-| Flag | Description |
-|------|-------------|
-| `--dry-run` | Check for updates without downloading |
-| `--interactive` | Choose which vendors to update |
+- Updates pull the latest changes from the vendor's Git repository
+- Updates are tracked in the `airuler.lock` file
+- Use `airuler vendors status` to check for available updates before updating
 
 ## Managing Vendors
 
 ### List and Status
 
 ```bash
-# List all vendors
+# List all vendors with repository and configuration details
 airuler vendors list
+
+# Show detailed configuration for specific vendor
+airuler vendors list frontend-vendor
 
 # Check vendor status
 airuler vendors status
 
-# Check for vendor updates
+# Check for vendor updates without fetching
 airuler vendors check
-
-# View vendor configurations
-airuler vendors config                    # Show all vendor configs
-airuler vendors config frontend-vendor    # Show specific vendor config
 ```
+
+### Enhanced List Command
+
+The `vendors list` command has been enhanced to combine repository and configuration information:
+
+- **Without arguments**: Shows all vendors with repository info and configuration summaries
+- **With vendor name**: Shows detailed configuration for the specific vendor
+
+This replaces the separate `vendors config` command for better usability.
 
 ### Include/Exclude Vendors
 
@@ -99,34 +104,47 @@ airuler vendors exclude-all
 airuler vendors remove backend
 ```
 
-## Compiling with Vendors
+## Using Vendors in Workflows
 
-### Vendor-Specific Compilation
+### Vendor Integration in Deploy and Sync
+
+Vendors are automatically included when using the main workflow commands:
 
 ```bash
-# Compile including all enabled vendors
-airuler compile
+# Deploy with all enabled vendors
+airuler deploy
 
-# Compile from specific vendor
-airuler compile --vendor backend
+# Deploy for specific targets (includes vendor templates)
+airuler deploy --targets cursor,claude
 
-# Compile from multiple vendors
-airuler compile --vendors "backend,frontend"
+# Sync workflow includes vendor updates and deployment
+airuler sync
 
-# Compile specific rule from vendor
-airuler compile --vendor frontend --rule coding-standards
+# Sync without vendor updates
+airuler sync --no-update
 ```
 
-### Vendor Compilation Options
+### Vendor Scope Control
 
-| Flag | Description | Example |
-|------|-------------|---------|
-| `--vendor <name>` | Compile from specific vendor | `--vendor frontend` |
-| `--vendors <list>` | Compile from multiple vendors | `--vendors "fe,be"` |
+Control which vendors are included in compilation through configuration or include/exclude commands:
+
+```bash
+# Include specific vendor
+airuler vendors include frontend
+
+# Exclude specific vendor
+airuler vendors exclude backend
+
+# Include all vendors
+airuler vendors include-all
+
+# Exclude all vendors (local templates only)
+airuler vendors exclude-all
+```
 
 ## Vendor Directory Structure
 
-When you fetch a vendor, airuler creates:
+When you add a vendor, airuler creates:
 
 ```
 vendors/
@@ -190,6 +208,7 @@ variables:
 ```
 
 **How Vendor Configuration Works:**
+
 - Vendor defaults are applied to templates from that vendor
 - Template front matter can override vendor defaults
 - Project configuration can override vendor settings via `vendor_overrides`
@@ -216,6 +235,7 @@ vendors:
 ### Setting Up Shared Vendors
 
 1. **Team Lead**: Create shared repository
+
    ```bash
    # Initialize vendor repository
    mkdir company-standards
@@ -227,12 +247,14 @@ vendors:
    git push -u origin main
    ```
 
-2. **Team Members**: Fetch shared standards
+1. **Team Members**: Add shared standards
+
    ```bash
-   airuler fetch https://github.com/company/standards --as company
+   airuler vendors add https://github.com/company/standards --as company
    ```
 
-3. **Configure Project**: Update `airuler.yaml`
+1. **Configure Project**: Update `airuler.yaml`
+
    ```yaml
    defaults:
      include_vendors: [company]
@@ -241,22 +263,23 @@ vendors:
 ### Updating Shared Standards
 
 1. **Update Vendor Repository**: Make changes to templates
-2. **Team Sync**: Update local copies
+1. **Team Sync**: Update local copies
    ```bash
-   airuler update company
-   airuler compile
-   airuler update-installed
+   airuler vendors update company
+   airuler sync
    ```
 
 ## Vendor Best Practices
 
 ### Repository Structure
+
 - Follow standard airuler project structure
 - Include comprehensive `README.md` for vendor
 - Use semantic versioning with Git tags
 - Document template purposes and usage
 
 ### Template Organization
+
 ```
 vendor-repo/
 ├── templates/
@@ -270,12 +293,14 @@ vendor-repo/
 ```
 
 ### Version Management
+
 - Use Git tags for releases: `v1.0.0`, `v1.1.0`
 - Maintain backward compatibility when possible
 - Document breaking changes in CHANGELOG
 - Test templates before releasing
 
 ### Collaboration Guidelines
+
 - Follow consistent naming conventions
 - Include template descriptions in front matter
 - Use partials for common content
@@ -286,25 +311,29 @@ vendor-repo/
 ### Common Issues
 
 **Vendor sync problems**:
+
 ```bash
 # Check vendor status
 airuler vendors status
 
 # Force update
-airuler fetch https://github.com/vendor/repo --update
+airuler vendors add https://github.com/vendor/repo --update
 ```
 
 **Template conflicts**:
+
 - Vendor templates are isolated by design
 - Check template names within vendor
 - Verify partial references are correct
 
 **Git authentication**:
+
 - Ensure proper Git credentials for private repositories
 - Use SSH keys or personal access tokens as needed
 - Check repository permissions
 
 **Lock file issues**:
+
 - Commit `airuler.lock` to version control
 - Resolve conflicts by running `airuler update`
 - Never manually edit lock file
@@ -313,11 +342,13 @@ airuler fetch https://github.com/vendor/repo --update
 
 ```bash
 # Verbose output for debugging
-airuler fetch <url> --verbose
-airuler update --verbose
-airuler compile --vendor <name> --verbose
+airuler vendors add <url> --verbose
+airuler vendors update --verbose
+airuler deploy --verbose
+airuler sync --verbose
 
 # Check vendor configuration
+airuler vendors list
 airuler vendors status
 airuler config path
 ```

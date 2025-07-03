@@ -4,11 +4,11 @@ airuler automatically tracks where templates have been installed, enabling safe 
 
 ## How Installation Tracking Works
 
-When you install templates using `airuler install`, airuler automatically:
+When you deploy templates using `airuler deploy`, airuler automatically:
 
 1. **Records Installation Details**: Tracks the target, rule name, installation location, mode, and timestamp
-2. **Maintains Installation Database**: Stores tracking information in a single global database
-3. **Enables Safe Operations**: Allows for clean uninstalls and selective updates
+1. **Maintains Installation Database**: Stores tracking information in a single global database
+1. **Enables Safe Operations**: Allows for clean uninstalls and selective updates
 
 ## Installation Database
 
@@ -49,14 +49,14 @@ installations:
 
 ## Viewing Installed Templates
 
-### List Commands
+### Management Commands
 
 ```bash
-# List all installed templates
-airuler list-installed
+# Interactive management interface with installation overview
+airuler manage
 
-# Filter by keyword
-airuler list-installed --filter cursor
+# View detailed installation management
+airuler manage installations
 ```
 
 ### Example Output
@@ -79,93 +79,90 @@ cursor   project-rules        normal   project-rules.mdc         3 hours ago
 gemini   local-guidelines     -        GEMINI.md                 2 hours ago
 ```
 
-### Filter Options
+### Management Features
 
-| Flag                 | Description                     | Example           |
-|----------------------|---------------------------------|-------------------|
-| `--filter <keyword>` | Filter by target, rule, or file | `--filter claude` |
+The `manage installations` command provides:
+
+- List of all installed templates organized by scope (global/project)
+- Installation status and file existence verification
+- Interactive access to uninstall options
 
 ## Updating Installed Templates
 
-### Update Commands
+### Sync Command
+
+The primary way to update installed templates is through the sync workflow:
 
 ```bash
-# Update all tracked installations
-airuler update-installed
+# Full sync: update vendors → compile → update existing installations
+airuler sync
 
-# Update only global installations
-airuler update-installed --global
+# Update only existing installations (skip vendor updates)
+airuler sync --no-update
 
-# Update only project installations
-airuler update-installed --project
+# Update specific target installations only
+airuler sync cursor
 
-# Update specific target
-airuler update-installed claude
-
-# Update specific rule
-airuler update-installed claude coding-standards
+# Update with specific scope
+airuler sync --scope global    # Only global installations
+airuler sync --scope project   # Only project installations
 ```
 
 ### Update Process
 
 The update process:
+
 1. **Recompiles templates** from current source
-2. **Compares content** with installed versions using hash comparison
-3. **Updates only if changed** to avoid unnecessary file modifications
-4. **Creates backups** of target files before overwriting (e.g., `rule.md.backup.20240115-143022`)
-5. **Updates tracking database** with new timestamps and content hashes
+1. **Compares content** with installed versions using hash comparison
+1. **Updates only if changed** to avoid unnecessary file modifications
+1. **Creates backups** of target files before overwriting (e.g., `rule.md.backup.20240115-143022`)
+1. **Updates tracking database** with new timestamps and content hashes
 
-### Update Options
+### Sync Options
 
-| Flag | Description | Example |
-|------|-------------|---------|
-| `--global` | Update only global installations | `--global` |
-| `--project` | Update only project installations | `--project` |
+| Flag           | Short | Description                      | Example                   |
+| -------------- | ----- | -------------------------------- | ------------------------- |
+| `--no-update`  |       | Skip vendor updates              | `--no-update`             |
+| `--no-compile` |       | Skip template compilation        | `--no-compile`            |
+| `--no-deploy`  |       | Skip deployment to installations | `--no-deploy`             |
+| `--scope`      | `-s`  | Limit to specific scope          | `--scope global`          |
+| `--targets`    | `-t`  | Update specific targets only     | `--targets cursor,claude` |
+| `--dry-run`    | `-n`  | Show what would happen           | `--dry-run`               |
+| `--force`      | `-f`  | Skip confirmation prompts        | `--force`                 |
 
 ## Uninstalling Templates
 
 ### Uninstall Commands
 
 ```bash
-# Uninstall all tracked installations (with confirmation)
-airuler uninstall
+# Interactive uninstallation interface
+airuler manage uninstall
 
-# Uninstall specific target
-airuler uninstall claude
-
-# Uninstall specific rule
-airuler uninstall claude security-guide
-
-# Interactive selection mode
-airuler uninstall --interactive
-
-# Force uninstall without prompts
-airuler uninstall --force
-
-# Uninstall only global installations
-airuler uninstall --global
-
-# Uninstall only project installations
-airuler uninstall --project
+# Uninstall all installations without prompts
+airuler manage uninstall --all
 ```
 
 ### Uninstall Process
 
 1. **Identifies tracked files** from installation database
-2. **Prompts for confirmation** (unless using `--force`)
-3. **Removes only airuler-installed files** (never removes user files)
-4. **Updates installation database** to remove uninstalled entries
+1. **Prompts for confirmation** (unless using `--force`)
+1. **Removes only airuler-installed files** (never removes user files)
+1. **Updates installation database** to remove uninstalled entries
 
 Note: Backups of target files created during installation are not automatically restored. They remain in the target directories with `.backup.timestamp` suffixes.
 
 ### Uninstall Options
 
-| Flag | Description |
-|------|-------------|
-| `--interactive` | Choose specific installations to remove |
-| `--force` | Skip confirmation prompts |
-| `--global` | Uninstall only global installations |
-| `--project` | Uninstall only project installations |
+| Flag    | Short | Description                                             |
+| ------- | ----- | ------------------------------------------------------- |
+| `--all` | `-a`  | Uninstall all installations without interactive prompts |
+
+The `manage uninstall` command provides:
+
+- **Interactive mode** (default): Choose specific installations to remove
+- **Bulk mode** (`--all`): Remove all installations with single confirmation
+- **Safety checks**: Only removes airuler-tracked installations
+- **Confirmation prompts**: Prevents accidental deletions
 
 ## Installation Modes and Tracking
 
@@ -174,7 +171,7 @@ airuler tracks different installation types:
 ### Installation Types
 
 - **Global installations**: Rules installed to AI tool global configurations
-- **Project installations**: Rules installed to specific project directories  
+- **Project installations**: Rules installed to specific project directories
 - **Memory mode (Claude)**: Content appended to CLAUDE.md files
 - **Command mode (Claude)**: Individual command files in .claude/commands/
 - **Merged files (Copilot, Gemini)**: Multiple rules combined into single files
@@ -182,21 +179,25 @@ airuler tracks different installation types:
 ### Mode-Specific Behavior
 
 **Memory Mode**:
+
 - Tracks content appended to CLAUDE.md
 - Updates only the airuler-managed sections
 - Preserves user-added content
 
 **Command Mode**:
+
 - Tracks individual command files
 - Can update/remove specific commands
 - Maintains command isolation
 
 **Normal Mode** (Cursor, Cline, Roo):
+
 - Tracks complete file installations
 - Can safely overwrite managed files
 - Creates backups before changes
 
 **Merged Mode** (Copilot, Gemini):
+
 - Combines multiple rules into single files (copilot-instructions.md, GEMINI.md)
 - Uses reinstall strategy for partial updates
 - Maintains rule separation with "---" dividers
@@ -249,9 +250,9 @@ airuler config path  # Shows config directory locations
 The installation database is automatically managed by airuler. If you encounter issues with corrupted or missing installation records, you can:
 
 1. Check the database file location using `airuler config path`
-2. Manually inspect the YAML file if needed
-3. Remove corrupted entries by editing the file directly
-4. Reinstall templates to recreate tracking records
+1. Manually inspect the YAML file if needed
+1. Remove corrupted entries by editing the file directly
+1. Reinstall templates to recreate tracking records
 
 ## Advanced Installation Scenarios
 
@@ -271,8 +272,7 @@ jobs:
       - uses: actions/checkout@v3
       - name: Update installed rules
         run: |
-          airuler update
-          airuler update-installed --force
+          airuler sync --force
           # Commit updated rules if changed
 ```
 
@@ -280,29 +280,29 @@ jobs:
 
 ```bash
 # Development environment
-airuler install --project ./dev-project
+airuler deploy --project ./dev-project
 
 # Staging environment  
-airuler install --project ./staging-project
+airuler deploy --project ./staging-project
 
 # Production environment
-airuler install --project ./prod-project
+airuler deploy --project ./prod-project
 
-# List all environments
-airuler list-installed --filter project
+# View all environments
+airuler manage installations
 ```
 
 ### Batch Operations
 
 ```bash
 # Update all Claude installations
-airuler update-installed --target claude
+airuler sync claude
 
-# Uninstall all cursor rules
-airuler uninstall cursor --force
+# Sync specific targets only
+airuler sync --targets cursor,claude
 
-# Update specific rule across all projects
-airuler update-installed --rule security-standards
+# Deploy to specific project
+airuler deploy --project ./specific-project
 ```
 
 ## Troubleshooting
@@ -310,6 +310,7 @@ airuler update-installed --rule security-standards
 ### Common Issues
 
 **Installation database corruption**:
+
 ```bash
 # Check database location
 airuler config path
@@ -319,15 +320,17 @@ cat ~/.config/airuler/airuler.installs
 ```
 
 **Missing backup files**:
+
 ```bash
 # Check backup locations
 ls -la *.backup.*
 
 # Reinstall to recreate tracking
-airuler install
+airuler deploy --force
 ```
 
 **Permission issues**:
+
 ```bash
 # Check file permissions
 ls -la ~/.config/airuler/
@@ -338,49 +341,54 @@ chmod 755 ~/.config/airuler/
 ```
 
 **Path resolution problems**:
+
 ```bash
 # Debug path resolution
-airuler list-installed --verbose
+airuler manage installations
 
 # Use absolute paths
-airuler install --project "$(pwd)/project"
+airuler deploy --project "$(pwd)/project"
 ```
 
 ### Debugging Commands
 
 ```bash
 # View installation details
-airuler list-installed
+airuler manage installations
 
-# Install with confirmation prompts
-airuler install --interactive
+# Deploy with dry run to check
+airuler deploy --dry-run
 
 # Force reinstall to fix tracking
-airuler install --force
+airuler deploy --force
 ```
 
 ### Recovery Procedures
 
 **Lost installation database**:
+
 1. The database file is not automatically backed up
-2. Recreate by reinstalling: `airuler install --force`
-3. Check config path: `airuler config path`
+1. Recreate by reinstalling: `airuler deploy --force`
+1. Check config path: `airuler config path`
 
 **Corrupted installations**:
+
 1. Manually backup current database: `cp ~/.config/airuler/airuler.installs ~/.config/airuler/airuler.installs.backup`
-2. Edit file manually or remove corrupted entries
-3. Verify results: `airuler list-installed`
+1. Edit file manually or remove corrupted entries
+1. Verify results: `airuler manage installations`
 
 ## Best Practices
 
 ### Installation Workflow
+
 1. **Test first**: Use `--project` flag to test in isolated directory
-2. **Review changes**: Use `list-installed` to verify installations
-3. **Regular updates**: Set up automated update schedules
-4. **Backup management**: Periodically clean old backup files
+1. **Review changes**: Use `manage installations` to verify installations
+1. **Regular updates**: Set up automated sync schedules
+1. **Backup management**: Periodically clean old backup files
 
 ### Database Maintenance
-- **Regular review**: Run `list-installed` to review current installations
+
+- **Regular review**: Run `manage installations` to review current installations
 - **Cleanup orphans**: Remove entries for deleted projects manually
 - **Version control**: Include project `.airuler/` in git (if applicable)
 - **Backup database**: Manually backup the installation database periodically

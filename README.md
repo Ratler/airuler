@@ -96,30 +96,33 @@ When reviewing or writing code:
 {{end}}
 ```
 
-### 3. Compile templates
+### 3. Deploy rules (compile + install)
 
 ```bash
-# Compile for all targets
-airuler compile
+# Deploy to global AI agent configs
+airuler deploy
 
-# Compile for specific target
-airuler compile claude
+# Deploy to specific project directory
+airuler deploy --project ./my-project
 
-# Compile specific rule
-airuler compile --rule my-coding-rules
+# Deploy for specific target
+airuler deploy cursor
+
+# Interactive template selection
+airuler deploy --interactive
 ```
 
-### 4. Install rules
+### 4. Sync workflow (update vendors + compile + deploy)
 
 ```bash
-# Install to global AI agent configs
-airuler install
+# Full sync: update vendors → compile → deploy
+airuler sync
 
-# Install to project directory
-airuler install --project ./my-project
+# Sync for specific target only
+airuler sync claude
 
-# Install specific target
-airuler install claude
+# Skip vendor updates
+airuler sync --no-update
 ```
 
 ## Target Support
@@ -136,34 +139,41 @@ airuler install claude
 ## Key Commands
 
 ```bash
-# Core workflow
+# Project Setup
 airuler init                    # Initialize project
-airuler compile                 # Compile templates
-airuler install                 # Install rules
-airuler watch                   # Development mode
+airuler config init             # Initialize global config
+
+# Core Workflow
+airuler deploy                  # Compile templates and install fresh
+airuler deploy --interactive    # Interactive template selection
+airuler sync                    # Update vendors + compile + deploy
+airuler watch                   # Development mode with auto-compile
 
 # Management
-airuler list-installed          # View installed templates
-airuler update-installed        # Update all installations
-airuler uninstall               # Remove installed templates
+airuler manage                  # Interactive management hub
+airuler manage installations    # View installed templates
+airuler manage uninstall        # Remove installed templates
+airuler manage uninstall --all  # Remove all installations
 
-# Vendor management
-airuler fetch <url>             # Add external templates
-airuler update                  # Update vendors
-airuler vendors list            # List vendors
-airuler vendors config          # View vendor configurations
+# Vendor Management
+airuler vendors add <url>       # Add external template repository
+airuler vendors list            # List vendors with config details
+airuler vendors update          # Update vendor repositories
+airuler vendors include <name>  # Include vendor in compilation
+airuler vendors remove <name>   # Remove vendor
 
 # Configuration
-airuler config init             # Initialize global config
 airuler config path             # Show config locations
+airuler config set-template-dir # Set default template directory
 ```
 
 ## Documentation
 
 For detailed information, see:
 
+- **[Command Reference](docs/command-reference.md)** - Complete command and flag reference
 - **[Template Syntax](docs/templates.md)** - Template variables, functions, partials, and Claude Code modes
-- **[Vendor Management](docs/vendors.md)** - Fetching and managing external rule repositories
+- **[Vendor Management](docs/vendors.md)** - Adding and managing external rule repositories
 - **[Configuration](docs/configuration.md)** - YAML configuration, global settings, and template directories
 - **[Installation Management](docs/installation.md)** - Installation tracking, updates, and uninstallation
 - **[Examples & Best Practices](docs/examples.md)** - Advanced examples and development workflows
