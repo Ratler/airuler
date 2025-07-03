@@ -37,7 +37,7 @@ custom:                                     # → {{.Custom}} (map)
 Variables are populated from four sources (in order of precedence):
 
 ### 1. System Variables (Always Available)
-- `{{.Target}}` - Current compilation target (cursor, claude, cline, copilot, roo)
+- `{{.Target}}` - Current compilation target (cursor, claude, cline, copilot, gemini, roo)
 - `{{.Name}}` - Template filename without extension (e.g., "my-rules" from "my-rules.tmpl")
 
 ### 2. Vendor Configuration (If Template is from Vendor)
@@ -112,7 +112,9 @@ Target-specific content:
 {{if eq .Target "cursor"}}
 Cursor-specific content
 {{else if eq .Target "claude"}}
-Claude-specific content  
+Claude-specific content
+{{else if eq .Target "gemini"}}
+Gemini CLI-specific content
 {{end}}
 
 {{if contains .Tags "frontend"}}

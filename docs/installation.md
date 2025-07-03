@@ -69,12 +69,14 @@ Target   Rule                 Mode     File                      Installed
 cursor   coding-standards     normal   coding-standards.mdc      2 hours ago
 claude   security-guide       memory   CLAUDE.md                 1 day ago
 claude   refactor-helper      command  refactor-helper.md        1 day ago
+gemini   project-standards    -        GEMINI.md                 3 hours ago
 
 📁 Project Installations (/path/to/project)
 ==============================================================================
 Target   Rule                 Mode     File                      Installed
 ------------------------------------------------------------------------------
 cursor   project-rules        normal   project-rules.mdc         3 hours ago
+gemini   local-guidelines     -        GEMINI.md                 2 hours ago
 ```
 
 ### Filter Options
@@ -175,6 +177,7 @@ airuler tracks different installation types:
 - **Project installations**: Rules installed to specific project directories  
 - **Memory mode (Claude)**: Content appended to CLAUDE.md files
 - **Command mode (Claude)**: Individual command files in .claude/commands/
+- **Merged files (Copilot, Gemini)**: Multiple rules combined into single files
 
 ### Mode-Specific Behavior
 
@@ -188,10 +191,15 @@ airuler tracks different installation types:
 - Can update/remove specific commands
 - Maintains command isolation
 
-**Normal Mode** (Cursor, Cline, etc.):
+**Normal Mode** (Cursor, Cline, Roo):
 - Tracks complete file installations
 - Can safely overwrite managed files
 - Creates backups before changes
+
+**Merged Mode** (Copilot, Gemini):
+- Combines multiple rules into single files (copilot-instructions.md, GEMINI.md)
+- Uses reinstall strategy for partial updates
+- Maintains rule separation with "---" dividers
 
 ## Safety Features
 

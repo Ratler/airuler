@@ -83,7 +83,7 @@ defaults:
   
 # Project-specific settings can override global ones
 compile:
-  targets: ["claude", "cursor"]  # Only compile for specific targets
+  targets: ["claude", "cursor", "gemini"]  # Only compile for specific targets
 ```
 
 ### Vendor-Specific Configuration
@@ -249,7 +249,7 @@ defaults:
   include_vendors: ["company-standards", "project-specific"]
   
 compile:
-  targets: ["claude", "cursor"]
+  targets: ["claude", "cursor", "gemini"]
   
 install:
   backup: true

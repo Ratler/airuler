@@ -56,6 +56,7 @@ airuler compile
 # Install and test with different AI tools
 airuler install cursor --project ./cursor-test
 airuler install claude --project ./claude-test
+airuler install gemini --project ./gemini-test
 ```
 
 ### Team Collaboration
@@ -105,6 +106,11 @@ For security reviews:
 1. Check for hardcoded secrets
 2. Verify input sanitization
 3. Confirm proper error handling
+{{else if eq .Target "gemini"}}
+Security checklist for Gemini CLI:
+1. Audit code for hardcoded credentials
+2. Validate all user inputs properly
+3. Implement comprehensive error handling
 {{end}}
 EOF
 
@@ -417,6 +423,66 @@ When working with TypeScript code:
 4. ✅ Use readonly for immutable data
 5. ✅ Prefer interfaces over type aliases for object shapes
 6. ✅ Add JSDoc comments for public APIs
+{{end}}
+```
+
+### Gemini CLI Specific Template
+
+```yaml
+---
+description: "Gemini CLI coding assistant rules"
+language: "python"
+project_type: "data-science"
+globs: "**/*.{py,ipynb}"
+tags: ["machine-learning", "data-analysis"]
+---
+# {{.Language}} Development for {{.ProjectType}}
+
+## Data Science Best Practices
+
+### Code Organization
+- Structure notebooks with clear sections
+- Extract reusable functions to .py modules
+- Use meaningful variable names for data analysis
+- Document data sources and transformations
+
+### {{.Language}} Specific Guidelines
+```python
+# Use type hints for better code clarity
+import pandas as pd
+from typing import List, Dict, Optional
+
+def analyze_data(df: pd.DataFrame, 
+                columns: List[str], 
+                threshold: float = 0.5) -> Dict[str, float]:
+    """Analyze data with specified threshold."""
+    results = {}
+    for col in columns:
+        if col in df.columns:
+            results[col] = df[col].mean()
+    return results
+```
+
+### Machine Learning Guidelines
+- Always split data before any preprocessing
+- Use cross-validation for model evaluation
+- Document model assumptions and limitations
+- Version control datasets and model artifacts
+
+### Jupyter Notebook Standards
+- Use descriptive cell headers with markdown
+- Clear all outputs before committing
+- Include data source documentation
+- Add conclusion cells summarizing findings
+
+## Target-Specific Instructions
+{{if eq .Target "gemini"}}
+When working with this {{.ProjectType}} codebase:
+1. 🔍 Focus on data integrity and validation
+2. 📊 Suggest appropriate visualizations for data exploration
+3. 🧮 Recommend statistical tests when relevant
+4. 🔬 Help optimize model performance and interpretability
+5. 📝 Ensure reproducibility of analysis results
 {{end}}
 ```
 

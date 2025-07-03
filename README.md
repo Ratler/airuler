@@ -1,21 +1,20 @@
 # airuler - AI Rules Template Engine
 
 A Go-based CLI tool that compiles AI rule templates into target-specific formats for various AI coding assistants
-including Cursor, Claude Code, Cline, GitHub Copilot, and Roo Code.
+including Cursor, Claude Code, Cline, GitHub Copilot, Gemini CLI, and Roo Code.
 
 ## The Problem
 
 **Stop duplicating your AI coding rules across multiple tools.**
 
-If you're using Cursor, Claude Code, Cline, GitHub Copilot, and Roo Code, you know the pain: maintaining the same coding
+If you're using Cursor, Claude Code, Cline, GitHub Copilot, Gemini CLI, and Roo Code, you know the pain: maintaining the same coding
 standards and project rules across completely different file formats and locations. airuler solves this by letting you
 write your rules once as templates, then automatically generating the correct format for each AI assistant.
 
-
 ## Features
 
-- 🎯 **Multi-target compilation**: Generate rules for Cursor, Claude Code, Cline, GitHub Copilot, and Roo Code
-- 📦 **Vendor management**: Fetch and manage rule templates from Git repositories  
+- 🎯 **Multi-target compilation**: Generate rules for Cursor, Claude Code, Cline, GitHub Copilot, Gemini CLI, and Roo Code
+- 📦 **Vendor management**: Fetch and manage rule templates from Git repositories
 - 🔄 **Template inheritance**: Support for template partials and reusable components
 - 💾 **Safe installation**: Automatic backup of existing rules and installation tracking
 - 🔍 **Watch mode**: Auto-compile templates during development
@@ -120,13 +119,14 @@ airuler install claude
 
 ## Target Support
 
-| Target             | Format       | Location                           | Features                                       |
-|--------------------|--------------|------------------------------------|------------------------------------------------|
-| **Cursor**         | `.mdc` files | `.cursor/rules/`                   | YAML front matter, globs, alwaysApply          |
-| **Claude Code**    | `.md`  files | `.claude/commands/` or `CLAUDE.md` | Memory/command modes, `$ARGUMENTS` placeholder |
-| **Cline**          | `.md`  files | `.clinerules/`                     | Plain markdown rules                           |
-| **GitHub Copilot** | `.md`  files | `.github/copilot-instructions.md`  | Combined into single file                      |
-| **Roo Code**       | `.md`  files | `.roo/rules/`                      | Plain markdown rules                           |
+| Target             | Format       | Location                             | Features                                            |
+| ------------------ | ------------ | ------------------------------------ | --------------------------------------------------- |
+| **Cursor**         | `.mdc` files | `.cursor/rules/`                     | YAML front matter, globs, alwaysApply               |
+| **Claude Code**    | `.md` files  | `.claude/commands/` or `CLAUDE.md`   | Memory/command modes, `$ARGUMENTS` placeholder      |
+| **Cline**          | `.md` files  | `.clinerules/`                       | Plain markdown rules                                |
+| **GitHub Copilot** | `.md` files  | `.github/copilot-instructions.md`    | Combined into single file                           |
+| **Gemini CLI**     | `.md` files  | `~/.gemini/GEMINI.md` or `GEMINI.md` | Combined into single file, global & project support |
+| **Roo Code**       | `.md` files  | `.roo/rules/`                        | Plain markdown rules                                |
 
 ## Key Commands
 
@@ -182,6 +182,6 @@ make lint
 
 MIT License
 
----
+______________________________________________________________________
 
 *airuler helps you maintain consistent AI coding assistant rules across different tools and projects through a unified template system.*
