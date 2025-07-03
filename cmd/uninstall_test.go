@@ -433,6 +433,72 @@ func TestUninstallSingle(t *testing.T) {
 			t.Errorf("Expected 0 installations in tracker, got %d", len(tracker.Installations))
 		}
 	})
+
+	t.Run("uninstall gemini target routes to special handler", func(t *testing.T) {
+		originalDir, err := os.Getwd()
+		if err != nil {
+			t.Fatalf("Failed to get current directory: %v", err)
+		}
+		defer os.Chdir(originalDir)
+
+		if err := os.Chdir(tempDir); err != nil {
+			t.Fatalf("Failed to change to temp directory: %v", err)
+		}
+
+		// Create a test home directory to avoid interfering with real home directory
+		testHomeDir := filepath.Join(tempDir, "test-home-single")
+		err = os.MkdirAll(testHomeDir, 0755)
+		if err != nil {
+			t.Fatalf("Failed to create test home directory: %v", err)
+		}
+
+		// Save original HOME env var and restore after test
+		originalHome := os.Getenv("HOME")
+		os.Setenv("HOME", testHomeDir)
+		defer os.Setenv("HOME", originalHome)
+
+		// Create .gemini directory and GEMINI.md file
+		geminiDir := filepath.Join(testHomeDir, ".gemini")
+		err = os.MkdirAll(geminiDir, 0755)
+		if err != nil {
+			t.Fatalf("Failed to create .gemini directory: %v", err)
+		}
+
+		geminiFile := filepath.Join(geminiDir, "GEMINI.md")
+		err = os.WriteFile(geminiFile, []byte("# Test Content"), 0644)
+		if err != nil {
+			t.Fatalf("Failed to create gemini file: %v", err)
+		}
+
+		geminiInstallation := config.InstallationRecord{
+			Target:      "gemini",
+			Rule:        "test-rule",
+			Global:      true,
+			ProjectPath: "",
+			Mode:        "",
+			InstalledAt: time.Now(),
+			FilePath:    geminiFile,
+		}
+
+		tracker := &config.InstallationTracker{
+			Installations: []config.InstallationRecord{geminiInstallation},
+		}
+
+		err = uninstallSingle(geminiInstallation, tracker)
+		if err != nil {
+			t.Errorf("uninstallSingle() for gemini target failed: %v", err)
+		}
+
+		// Verify gemini file was deleted (since it was the last rule)
+		if _, err := os.Stat(geminiFile); !os.IsNotExist(err) {
+			t.Error("Gemini file should be deleted when last rule is uninstalled")
+		}
+
+		// Verify installation was removed from tracker
+		if len(tracker.Installations) != 0 {
+			t.Errorf("Expected 0 installations in tracker, got %d", len(tracker.Installations))
+		}
+	})
 }
 
 func TestUninstallCopilotRule(t *testing.T) {
@@ -733,6 +799,405 @@ func TestParseDisplayText(t *testing.T) {
 	if timeAgo == "" {
 		t.Error("Expected timeAgo to be set")
 	}
+}
+
+func TestUninstallGeminiRule(t *testing.T) {
+	tempDir := t.TempDir()
+	originalDir, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("Failed to get current directory: %v", err)
+	}
+	defer os.Chdir(originalDir)
+
+	if err := os.Chdir(tempDir); err != nil {
+		t.Fatalf("Failed to change to temp directory: %v", err)
+	}
+
+	t.Run("global gemini uninstall", func(t *testing.T) {
+		// Create a test home directory to avoid interfering with real home directory
+		testHomeDir := filepath.Join(tempDir, "test-home")
+		err := os.MkdirAll(testHomeDir, 0755)
+		if err != nil {
+			t.Fatalf("Failed to create test home directory: %v", err)
+		}
+
+		// Save original HOME env var and restore after test
+		originalHome := os.Getenv("HOME")
+		os.Setenv("HOME", testHomeDir)
+		defer os.Setenv("HOME", originalHome)
+
+		// Create .gemini directory and GEMINI.md file
+		geminiDir := filepath.Join(testHomeDir, ".gemini")
+		err = os.MkdirAll(geminiDir, 0755)
+		if err != nil {
+			t.Fatalf("Failed to create .gemini directory: %v", err)
+		}
+
+		geminiFile := filepath.Join(geminiDir, "GEMINI.md")
+		err = os.WriteFile(geminiFile, []byte("# Combined Gemini Instructions"), 0644)
+		if err != nil {
+			t.Fatalf("Failed to create gemini file: %v", err)
+		}
+
+		// Create compiled source files for testing reinstall
+		compiledDir := filepath.Join("compiled", "gemini")
+		err = os.MkdirAll(compiledDir, 0755)
+		if err != nil {
+			t.Fatalf("Failed to create compiled directory: %v", err)
+		}
+
+		rule1Source := filepath.Join(compiledDir, "rule1.md")
+		rule2Source := filepath.Join(compiledDir, "rule2.md")
+		err = os.WriteFile(rule1Source, []byte("# Rule 1\nContent for rule 1"), 0644)
+		if err != nil {
+			t.Fatalf("Failed to create rule1 source: %v", err)
+		}
+		err = os.WriteFile(rule2Source, []byte("# Rule 2\nContent for rule 2"), 0644)
+		if err != nil {
+			t.Fatalf("Failed to create rule2 source: %v", err)
+		}
+
+		// Create tracker with multiple global gemini rules
+		installations := []config.InstallationRecord{
+			{
+				Target:      "gemini",
+				Rule:        "rule1",
+				Global:      true,
+				ProjectPath: "",
+				Mode:        "",
+				InstalledAt: time.Now(),
+				FilePath:    geminiFile,
+			},
+			{
+				Target:      "gemini",
+				Rule:        "rule2",
+				Global:      true,
+				ProjectPath: "",
+				Mode:        "",
+				InstalledAt: time.Now(),
+				FilePath:    geminiFile,
+			},
+		}
+
+		tracker := &config.InstallationTracker{Installations: installations}
+
+		// Uninstall rule1, should reinstall with only rule2
+		err = uninstallGeminiRule(installations[0], tracker)
+		if err != nil {
+			t.Errorf("uninstallGeminiRule() failed: %v", err)
+		}
+
+		// Verify rule1 was removed from tracker
+		remainingRules := tracker.GetInstallations("gemini", "")
+		if len(remainingRules) != 1 {
+			t.Errorf("Expected 1 remaining gemini rule, got %d", len(remainingRules))
+		}
+		if remainingRules[0].Rule != "rule2" {
+			t.Errorf("Expected remaining rule to be rule2, got %s", remainingRules[0].Rule)
+		}
+
+		// Verify gemini file still exists (reinstalled with rule2)
+		if _, err := os.Stat(geminiFile); os.IsNotExist(err) {
+			t.Error("Gemini file should still exist after partial uninstall")
+		}
+
+		// Verify content contains rule2
+		content, err := os.ReadFile(geminiFile)
+		if err != nil {
+			t.Errorf("Failed to read gemini file: %v", err)
+		}
+		if !strings.Contains(string(content), "Content for rule 2") {
+			t.Error("Gemini file should contain rule2 content")
+		}
+		if strings.Contains(string(content), "Content for rule 1") {
+			t.Error("Gemini file should not contain rule1 content")
+		}
+
+		// Uninstall rule2, should delete the file completely
+		remainingInstallations := tracker.GetInstallations("gemini", "")
+		if len(remainingInstallations) > 0 {
+			err = uninstallGeminiRule(remainingInstallations[0], tracker)
+			if err != nil {
+				t.Errorf("uninstallGeminiRule() for last rule failed: %v", err)
+			}
+
+			// Verify no gemini rules remain in tracker
+			remainingRules = tracker.GetInstallations("gemini", "")
+			if len(remainingRules) != 0 {
+				t.Errorf("Expected 0 remaining gemini rules, got %d", len(remainingRules))
+			}
+
+			// Verify gemini file was deleted
+			if _, err := os.Stat(geminiFile); !os.IsNotExist(err) {
+				t.Error("Gemini file should be deleted when last rule is uninstalled")
+			}
+		}
+	})
+
+	t.Run("project gemini uninstall", func(t *testing.T) {
+		projectDir := filepath.Join(tempDir, "test-project")
+		err := os.MkdirAll(projectDir, 0755)
+		if err != nil {
+			t.Fatalf("Failed to create project directory: %v", err)
+		}
+
+		geminiFile := filepath.Join(projectDir, "GEMINI.md")
+		err = os.WriteFile(geminiFile, []byte("# Project Gemini Instructions"), 0644)
+		if err != nil {
+			t.Fatalf("Failed to create project gemini file: %v", err)
+		}
+
+		// Create compiled source files
+		compiledDir := filepath.Join("compiled", "gemini")
+		err = os.MkdirAll(compiledDir, 0755)
+		if err != nil {
+			t.Fatalf("Failed to create compiled directory: %v", err)
+		}
+
+		ruleSource := filepath.Join(compiledDir, "project-rule.md")
+		err = os.WriteFile(ruleSource, []byte("# Project Rule\nProject content"), 0644)
+		if err != nil {
+			t.Fatalf("Failed to create rule source: %v", err)
+		}
+
+		// Create tracker with project gemini rule
+		installation := config.InstallationRecord{
+			Target:      "gemini",
+			Rule:        "project-rule",
+			Global:      false,
+			ProjectPath: projectDir,
+			Mode:        "",
+			InstalledAt: time.Now(),
+			FilePath:    geminiFile,
+		}
+
+		tracker := &config.InstallationTracker{Installations: []config.InstallationRecord{installation}}
+
+		// Uninstall the project rule
+		err = uninstallGeminiRule(installation, tracker)
+		if err != nil {
+			t.Errorf("uninstallGeminiRule() for project rule failed: %v", err)
+		}
+
+		// Verify rule was removed from tracker
+		remainingRules := tracker.GetInstallations("gemini", "")
+		if len(remainingRules) != 0 {
+			t.Errorf("Expected 0 remaining gemini rules, got %d", len(remainingRules))
+		}
+
+		// Verify project gemini file was deleted
+		if _, err := os.Stat(geminiFile); !os.IsNotExist(err) {
+			t.Error("Project gemini file should be deleted when rule is uninstalled")
+		}
+	})
+}
+
+func TestReinstallGeminiRules(t *testing.T) {
+	tempDir := t.TempDir()
+	originalDir, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("Failed to get current directory: %v", err)
+	}
+	defer os.Chdir(originalDir)
+
+	if err := os.Chdir(tempDir); err != nil {
+		t.Fatalf("Failed to change to temp directory: %v", err)
+	}
+
+	// Create compiled source files
+	compiledDir := filepath.Join("compiled", "gemini")
+	err = os.MkdirAll(compiledDir, 0755)
+	if err != nil {
+		t.Fatalf("Failed to create compiled directory: %v", err)
+	}
+
+	rule1Source := filepath.Join(compiledDir, "rule1.md")
+	rule2Source := filepath.Join(compiledDir, "rule2.md")
+	err = os.WriteFile(rule1Source, []byte("# Rule 1\nContent for rule 1"), 0644)
+	if err != nil {
+		t.Fatalf("Failed to create rule1 source: %v", err)
+	}
+	err = os.WriteFile(rule2Source, []byte("# Rule 2\nContent for rule 2"), 0644)
+	if err != nil {
+		t.Fatalf("Failed to create rule2 source: %v", err)
+	}
+
+	t.Run("reinstall global gemini rules", func(t *testing.T) {
+		// Create a test home directory to avoid interfering with real home directory
+		testHomeDir := filepath.Join(tempDir, "test-home-reinstall")
+		err := os.MkdirAll(testHomeDir, 0755)
+		if err != nil {
+			t.Fatalf("Failed to create test home directory: %v", err)
+		}
+
+		// Save original HOME env var and restore after test
+		originalHome := os.Getenv("HOME")
+		os.Setenv("HOME", testHomeDir)
+		defer os.Setenv("HOME", originalHome)
+
+		rules := []config.InstallationRecord{
+			{
+				Target:      "gemini",
+				Rule:        "rule1",
+				Global:      true,
+				ProjectPath: "",
+				Mode:        "",
+				InstalledAt: time.Now(),
+				FilePath:    filepath.Join(testHomeDir, ".gemini", "GEMINI.md"),
+			},
+			{
+				Target:      "gemini",
+				Rule:        "rule2",
+				Global:      true,
+				ProjectPath: "",
+				Mode:        "",
+				InstalledAt: time.Now(),
+				FilePath:    filepath.Join(testHomeDir, ".gemini", "GEMINI.md"),
+			},
+		}
+
+		err = reinstallGeminiRules(rules, "", true)
+		if err != nil {
+			t.Errorf("reinstallGeminiRules() for global rules failed: %v", err)
+		}
+
+		// Verify file was created
+		geminiFile := filepath.Join(testHomeDir, ".gemini", "GEMINI.md")
+		if _, err := os.Stat(geminiFile); os.IsNotExist(err) {
+			t.Error("Global gemini file should have been created")
+		}
+
+		// Verify content contains both rules
+		content, err := os.ReadFile(geminiFile)
+		if err != nil {
+			t.Errorf("Failed to read gemini file: %v", err)
+		}
+
+		contentStr := string(content)
+		if !strings.Contains(contentStr, "Content for rule 1") {
+			t.Error("Gemini file should contain rule1 content")
+		}
+		if !strings.Contains(contentStr, "Content for rule 2") {
+			t.Error("Gemini file should contain rule2 content")
+		}
+		if !strings.Contains(contentStr, "## rule1") {
+			t.Error("Gemini file should contain rule1 header")
+		}
+		if !strings.Contains(contentStr, "## rule2") {
+			t.Error("Gemini file should contain rule2 header")
+		}
+		if !strings.Contains(contentStr, "This file contains custom instructions for Gemini CLI") {
+			t.Error("Gemini file should contain Gemini CLI header")
+		}
+	})
+
+	t.Run("reinstall project gemini rules", func(t *testing.T) {
+		projectDir := filepath.Join(tempDir, "test-project")
+		err := os.MkdirAll(projectDir, 0755)
+		if err != nil {
+			t.Fatalf("Failed to create project directory: %v", err)
+		}
+
+		rules := []config.InstallationRecord{
+			{
+				Target:      "gemini",
+				Rule:        "rule1",
+				Global:      false,
+				ProjectPath: projectDir,
+				Mode:        "",
+				InstalledAt: time.Now(),
+				FilePath:    filepath.Join(projectDir, "GEMINI.md"),
+			},
+		}
+
+		err = reinstallGeminiRules(rules, projectDir, false)
+		if err != nil {
+			t.Errorf("reinstallGeminiRules() for project rules failed: %v", err)
+		}
+
+		// Verify file was created
+		geminiFile := filepath.Join(projectDir, "GEMINI.md")
+		if _, err := os.Stat(geminiFile); os.IsNotExist(err) {
+			t.Error("Project gemini file should have been created")
+		}
+
+		// Verify content contains rule
+		content, err := os.ReadFile(geminiFile)
+		if err != nil {
+			t.Errorf("Failed to read project gemini file: %v", err)
+		}
+
+		contentStr := string(content)
+		if !strings.Contains(contentStr, "Content for rule 1") {
+			t.Error("Project gemini file should contain rule1 content")
+		}
+	})
+
+	t.Run("reinstall with no rules", func(t *testing.T) {
+		err := reinstallGeminiRules([]config.InstallationRecord{}, tempDir, false)
+		if err != nil {
+			t.Errorf("reinstallGeminiRules() with empty rules failed: %v", err)
+		}
+	})
+
+	t.Run("reinstall project rules with missing project path", func(t *testing.T) {
+		rules := []config.InstallationRecord{
+			{
+				Target:      "gemini",
+				Rule:        "rule1",
+				Global:      false,
+				ProjectPath: "",
+				Mode:        "",
+				InstalledAt: time.Now(),
+				FilePath:    "/some/path/GEMINI.md",
+			},
+		}
+
+		err := reinstallGeminiRules(rules, "", false)
+		if err == nil {
+			t.Error("reinstallGeminiRules() without project path should fail")
+		}
+		if !strings.Contains(err.Error(), "gemini project rules require project path") {
+			t.Errorf("Expected 'require project path' error, got: %v", err)
+		}
+	})
+
+	t.Run("reinstall with missing compiled files", func(t *testing.T) {
+		// Create a separate test directory to avoid interfering with real home directory
+		testHomeDir := filepath.Join(tempDir, "test-home")
+		err := os.MkdirAll(testHomeDir, 0755)
+		if err != nil {
+			t.Fatalf("Failed to create test home directory: %v", err)
+		}
+
+		// Save original HOME env var and restore after test
+		originalHome := os.Getenv("HOME")
+		os.Setenv("HOME", testHomeDir)
+		defer os.Setenv("HOME", originalHome)
+
+		rules := []config.InstallationRecord{
+			{
+				Target:      "gemini",
+				Rule:        "missing-rule",
+				Global:      true,
+				ProjectPath: "",
+				Mode:        "",
+				InstalledAt: time.Now(),
+				FilePath:    filepath.Join(testHomeDir, ".gemini", "GEMINI.md"),
+			},
+		}
+
+		err = reinstallGeminiRules(rules, "", true)
+		if err != nil {
+			t.Errorf("reinstallGeminiRules() with missing compiled files failed: %v", err)
+		}
+
+		// Should not create file if no content found
+		geminiFile := filepath.Join(testHomeDir, ".gemini", "GEMINI.md")
+		if _, err := os.Stat(geminiFile); !os.IsNotExist(err) {
+			t.Error("Gemini file should not be created when no compiled content is found")
+		}
+	})
 }
 
 func TestShowUninstallPreviewAndConfirm(t *testing.T) {

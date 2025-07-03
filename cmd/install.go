@@ -147,6 +147,11 @@ func installForTarget(target compiler.Target) (int, error) {
 		return installCopilotRules(compiledDir, files)
 	}
 
+	// Special handling for Gemini - merge all rules into single file
+	if target == compiler.TargetGemini {
+		return installGeminiRules(compiledDir, files)
+	}
+
 	installed := 0
 	for _, file := range files {
 		if file.IsDir() {
@@ -400,6 +405,199 @@ func installCopilotRules(compiledDir string, files []os.DirEntry) (int, error) {
 	return 1, nil
 }
 
+func installGeminiRules(compiledDir string, files []os.DirEntry) (int, error) {
+	// Get target directory (global or project)
+	targetDir, err := getTargetInstallDir(compiler.TargetGemini)
+	if err != nil {
+		return 0, fmt.Errorf("failed to get Gemini install directory: %w", err)
+	}
+
+	targetPath := filepath.Join(targetDir, "GEMINI.md")
+
+	// Collect new rules being installed
+	var newRuleContents []string
+	var newRuleNames []string
+
+	for _, file := range files {
+		if file.IsDir() {
+			continue
+		}
+
+		// Filter by rule if specified
+		if installRule != "" && !strings.Contains(file.Name(), installRule) {
+			continue
+		}
+
+		if strings.HasSuffix(file.Name(), ".md") {
+			sourcePath := filepath.Join(compiledDir, file.Name())
+			content, err := os.ReadFile(sourcePath)
+			if err != nil {
+				fmt.Printf("  ⚠️  Failed to read %s: %v\n", file.Name(), err)
+				continue
+			}
+
+			newRuleContents = append(newRuleContents, strings.TrimSpace(string(content)))
+			newRuleNames = append(newRuleNames, strings.TrimSuffix(file.Name(), ".md"))
+		}
+	}
+
+	if len(newRuleContents) == 0 {
+		return 0, nil
+	}
+
+	// Get existing rules from installation tracker
+	tracker, err := config.LoadGlobalInstallationTracker()
+	if err != nil {
+		return 0, fmt.Errorf("failed to load installation tracker: %w", err)
+	}
+
+	var projectPath string
+	isGlobal := installProject == ""
+	if !isGlobal {
+		projectPath, err = resolveProjectPath(installProject)
+		if err != nil {
+			return 0, fmt.Errorf("failed to resolve project path: %w", err)
+		}
+	}
+
+	existingInstalls := tracker.GetInstallations("gemini", "")
+	var existingRuleNames []string
+
+	// Filter to only rules for this installation context (global vs project)
+	for _, install := range existingInstalls {
+		if isGlobal && install.Global {
+			existingRuleNames = append(existingRuleNames, install.Rule)
+		} else if !isGlobal && !install.Global && install.ProjectPath == projectPath {
+			existingRuleNames = append(existingRuleNames, install.Rule)
+		}
+	}
+
+	// Combine existing and new rules, avoiding duplicates
+	allRuleNames := make([]string, 0, len(existingRuleNames)+len(newRuleNames))
+	allRuleContents := make([]string, 0, len(existingRuleNames)+len(newRuleNames))
+	ruleSet := make(map[string]bool)
+
+	// Add existing rules first
+	for _, ruleName := range existingRuleNames {
+		if !ruleSet[ruleName] {
+			// Try to read content from compiled directory
+			sourcePath := filepath.Join(compiledDir, ruleName+".md")
+			content, err := os.ReadFile(sourcePath)
+			if err != nil {
+				// If we can't find the compiled file, skip this rule
+				// This handles cases where the rule was installed but compiled files were cleaned
+				continue
+			}
+
+			allRuleNames = append(allRuleNames, ruleName)
+			allRuleContents = append(allRuleContents, strings.TrimSpace(string(content)))
+			ruleSet[ruleName] = true
+		}
+	}
+
+	// Add new rules, skipping duplicates
+	for i, ruleName := range newRuleNames {
+		if !ruleSet[ruleName] {
+			allRuleNames = append(allRuleNames, ruleName)
+			allRuleContents = append(allRuleContents, newRuleContents[i])
+			ruleSet[ruleName] = true
+		}
+	}
+
+	// Ensure target directory exists
+	if err := os.MkdirAll(targetDir, 0755); err != nil {
+		return 0, fmt.Errorf("failed to create Gemini directory: %w", err)
+	}
+
+	// Handle existing file backup
+	if _, err := os.Stat(targetPath); err == nil && !installForce {
+		// Create backup
+		backupPath := targetPath + ".backup." + time.Now().Format("20060102-150405")
+		if err := copyFile(targetPath, backupPath); err != nil {
+			return 0, fmt.Errorf("failed to create backup: %w", err)
+		}
+		fmt.Printf("    📋 Backed up existing file to %s\n", filepath.Base(backupPath))
+	}
+
+	// Combine all rules into single content
+	var combinedContent strings.Builder
+	combinedContent.WriteString("# AI Coding Instructions\n\n")
+	combinedContent.WriteString("This file contains custom instructions for Gemini CLI.\n\n")
+
+	for i, content := range allRuleContents {
+		if i > 0 {
+			combinedContent.WriteString("\n---\n\n")
+		}
+		if len(allRuleContents) > 1 {
+			combinedContent.WriteString(fmt.Sprintf("## %s\n\n", allRuleNames[i]))
+		}
+		combinedContent.WriteString(content)
+		combinedContent.WriteString("\n")
+	}
+
+	// Write combined content
+	if err := os.WriteFile(targetPath, []byte(combinedContent.String()), 0600); err != nil {
+		return 0, fmt.Errorf("failed to write Gemini instructions: %w", err)
+	}
+
+	// Record installation for each NEW template that was added
+	var newlyInstalledCount int
+	if installRule != "" {
+		// If specific rule was requested, check if it's actually new
+		wasExisting := false
+		for _, existingName := range existingRuleNames {
+			if existingName == installRule {
+				wasExisting = true
+				break
+			}
+		}
+
+		if !wasExisting {
+			mode := ""
+			if !isGlobal {
+				mode = projectPath
+			}
+			if err := recordInstallation(compiler.TargetGemini, installRule, targetPath, mode); err != nil {
+				fmt.Printf("  ⚠️  Failed to record installation: %v\n", err)
+			} else {
+				newlyInstalledCount = 1
+			}
+		}
+	} else {
+		// Record each new template that was added
+		for _, ruleName := range newRuleNames {
+			// Only record if this rule wasn't already installed
+			wasExisting := false
+			for _, existingName := range existingRuleNames {
+				if existingName == ruleName {
+					wasExisting = true
+					break
+				}
+			}
+
+			if !wasExisting {
+				mode := ""
+				if !isGlobal {
+					mode = projectPath
+				}
+				if err := recordInstallation(compiler.TargetGemini, ruleName, targetPath, mode); err != nil {
+					fmt.Printf("  ⚠️  Failed to record installation: %v\n", err)
+				} else {
+					newlyInstalledCount++
+				}
+			}
+		}
+	}
+
+	if newlyInstalledCount > 0 {
+		fmt.Printf("  ✅ Combined %d new + %d existing rules -> %s\n", newlyInstalledCount, len(existingRuleNames), targetDir)
+	} else {
+		fmt.Printf("  ✅ No new rules to install (all %d rules already present) -> %s\n", len(allRuleNames), targetDir)
+	}
+
+	return 1, nil
+}
+
 func installFile(source, target string, _ compiler.Target) error {
 	// Check if target exists and create backup
 	if _, err := os.Stat(target); err == nil && !installForce {
@@ -464,6 +662,8 @@ func getGlobalInstallDir(target compiler.Target) (string, error) {
 		return filepath.Join(homeDir, ".clinerules"), nil
 	case compiler.TargetCopilot:
 		return "", fmt.Errorf("copilot does not support global installation (use --project flag)")
+	case compiler.TargetGemini:
+		return filepath.Join(homeDir, ".gemini"), nil
 	case compiler.TargetRoo:
 		return getRooGlobalPath(), nil
 	default:
@@ -497,6 +697,8 @@ func getProjectInstallDir(target compiler.Target, projectPath string) (string, e
 		return filepath.Join(absPath, ".clinerules"), nil
 	case compiler.TargetCopilot:
 		return filepath.Join(absPath, ".github"), nil
+	case compiler.TargetGemini:
+		return absPath, nil
 	case compiler.TargetRoo:
 		return filepath.Join(absPath, ".roo", "rules"), nil
 	default:
@@ -933,6 +1135,32 @@ func performInteractiveInstallations(selectedItems []installSelectionItem) error
 			}
 		}
 		delete(targetGroups, compiler.TargetCopilot)
+	}
+
+	// Handle Gemini specially (needs to merge files)
+	if geminiItems, ok := targetGroups[compiler.TargetGemini]; ok {
+		// Prepare files for Gemini installation
+		var files []os.DirEntry
+		for _, item := range geminiItems {
+			// Create a fake DirEntry for the file
+			info, err := os.Stat(item.sourcePath)
+			if err != nil {
+				fmt.Printf("  ⚠️  Failed to stat %s: %v\n", item.rule, err)
+				failed++
+				continue
+			}
+			files = append(files, fakeFileInfo{name: filepath.Base(item.sourcePath), FileInfo: info})
+		}
+
+		compiledDir := filepath.Join("compiled", string(compiler.TargetGemini))
+		count, err := installGeminiRules(compiledDir, files)
+		if err != nil {
+			fmt.Printf("  ⚠️  Failed to install Gemini templates: %v\n", err)
+			failed += len(geminiItems)
+		} else {
+			installed += count
+		}
+		delete(targetGroups, compiler.TargetGemini)
 	}
 
 	// Handle other targets

@@ -18,10 +18,11 @@ const (
 	TargetClaude  Target = "claude"
 	TargetCline   Target = "cline"
 	TargetCopilot Target = "copilot"
+	TargetGemini  Target = "gemini"
 	TargetRoo     Target = "roo"
 )
 
-var AllTargets = []Target{TargetCursor, TargetClaude, TargetCline, TargetCopilot, TargetRoo}
+var AllTargets = []Target{TargetCursor, TargetClaude, TargetCline, TargetCopilot, TargetGemini, TargetRoo}
 
 type Compiler struct {
 	engine *template.Engine
@@ -104,6 +105,8 @@ func (c *Compiler) postProcess(content, templateName string, target Target, data
 		return c.processCline(content, templateName, data)
 	case TargetCopilot:
 		return c.processCopilot(content, templateName, data)
+	case TargetGemini:
+		return c.processGemini(content, templateName, data)
 	case TargetRoo:
 		return c.processRoo(content, templateName, data)
 	default:
@@ -166,6 +169,23 @@ func (c *Compiler) processCopilot(content, templateName string, _ template.Data)
 	filename := filepath.Base(templateName) + ".copilot-instructions.md"
 
 	// Remove any YAML front matter for GitHub's plain Markdown format
+	if strings.HasPrefix(content, "---") {
+		// Find the end of front matter
+		parts := strings.SplitN(content, "---", 3)
+		if len(parts) >= 3 {
+			content = strings.TrimSpace(parts[2])
+		}
+	}
+
+	return content, filename
+}
+
+func (c *Compiler) processGemini(content, templateName string, _ template.Data) (string, string) {
+	// Gemini CLI uses single GEMINI.md file with plain Markdown
+	// During compilation, we generate unique filenames and combine them during installation
+	filename := filepath.Base(templateName) + ".md"
+
+	// Remove any YAML front matter for Gemini's plain Markdown format
 	if strings.HasPrefix(content, "---") {
 		// Find the end of front matter
 		parts := strings.SplitN(content, "---", 3)

@@ -110,6 +110,7 @@ func initProject(targetPath string) error {
 		"compiled/claude",
 		"compiled/cline",
 		"compiled/copilot",
+		"compiled/gemini",
 		"compiled/roo",
 	}
 

@@ -22,7 +22,7 @@ func TestNewCompiler(t *testing.T) {
 }
 
 func TestTargetConstants(t *testing.T) {
-	expectedTargets := []Target{TargetCursor, TargetClaude, TargetCline, TargetCopilot, TargetRoo}
+	expectedTargets := []Target{TargetCursor, TargetClaude, TargetCline, TargetCopilot, TargetGemini, TargetRoo}
 
 	if len(AllTargets) != len(expectedTargets) {
 		t.Errorf("AllTargets length = %d, expected %d", len(AllTargets), len(expectedTargets))
@@ -139,6 +139,25 @@ This is a rule for {{.Target}}.
 			},
 			checkFile: func(filename string) bool {
 				return filename == "test-rule.copilot-instructions.md"
+			},
+		},
+		{
+			name:   "gemini target",
+			target: TargetGemini,
+			data: template.Data{
+				Name:        "test-rule",
+				Description: "Test rule",
+				Globs:       "**/*.ts",
+			},
+			expectError: false,
+			checkContent: func(content string) bool {
+				return !strings.Contains(content, "---") &&
+					!strings.Contains(content, "description:") &&
+					!strings.Contains(content, "applyTo:") &&
+					strings.Contains(content, "This is a rule for gemini")
+			},
+			checkFile: func(filename string) bool {
+				return filename == "test-rule.md"
 			},
 		},
 		{

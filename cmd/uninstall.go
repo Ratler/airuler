@@ -460,6 +460,11 @@ func uninstallSingle(installation config.InstallationRecord, tracker *config.Ins
 		return uninstallCopilotRule(installation, tracker)
 	}
 
+	// Special handling for gemini target
+	if installation.Target == "gemini" {
+		return uninstallGeminiRule(installation, tracker)
+	}
+
 	// Standard handling for other targets
 	// Remove the actual file
 	if _, err := os.Stat(installation.FilePath); err == nil {
@@ -605,6 +610,144 @@ func reinstallCopilotRules(rules []config.InstallationRecord, projectPath string
 	// Write the combined content
 	if err := os.WriteFile(targetPath, []byte(combinedContent.String()), 0600); err != nil {
 		return fmt.Errorf("failed to write reinstalled copilot instructions: %w", err)
+	}
+
+	return nil
+}
+
+// uninstallGeminiRule handles the special case of uninstalling gemini rules
+// Since gemini rules are merged into a single file, we use a reinstall strategy:
+// 1. Remove the rule from tracking
+// 2. Get all remaining gemini rules for this scope (global/project)
+// 3. Delete the current combined file
+// 4. Reinstall all remaining rules (if any)
+func uninstallGeminiRule(installation config.InstallationRecord, tracker *config.InstallationTracker) error {
+	// First, remove this rule from tracking
+	tracker.RemoveInstallation(
+		installation.Target,
+		installation.Rule,
+		installation.Global,
+		installation.ProjectPath,
+		installation.Mode,
+	)
+
+	// Get all remaining gemini rules for this project/scope
+	remainingRules := tracker.GetInstallations("gemini", "")
+	var remainingForThisScope []config.InstallationRecord
+
+	// Filter to only rules that match this installation's scope (global vs project)
+	for _, rule := range remainingRules {
+		if rule.Global == installation.Global && rule.ProjectPath == installation.ProjectPath {
+			remainingForThisScope = append(remainingForThisScope, rule)
+		}
+	}
+
+	// Delete the current combined file if it exists
+	if _, err := os.Stat(installation.FilePath); err == nil {
+		if err := os.Remove(installation.FilePath); err != nil {
+			return fmt.Errorf("failed to remove gemini file %s: %w", installation.FilePath, err)
+		}
+	}
+
+	// If there are remaining rules, reinstall them
+	if len(remainingForThisScope) > 0 {
+		return reinstallGeminiRules(remainingForThisScope, installation.ProjectPath, installation.Global)
+	}
+
+	return nil
+}
+
+// reinstallGeminiRules recreates the GEMINI.md file with only the specified rules
+func reinstallGeminiRules(rules []config.InstallationRecord, projectPath string, isGlobal bool) error {
+	if len(rules) == 0 {
+		return nil
+	}
+
+	// Determine target directory based on global vs project installation
+	var targetDir string
+	var targetPath string
+
+	if isGlobal {
+		homeDir, err := os.UserHomeDir()
+		if err != nil {
+			return fmt.Errorf("failed to get home directory: %w", err)
+		}
+		targetDir = filepath.Join(homeDir, ".gemini")
+		targetPath = filepath.Join(targetDir, "GEMINI.md")
+	} else {
+		if projectPath == "" {
+			return fmt.Errorf("gemini project rules require project path")
+		}
+
+		// Get absolute project path, handling both absolute and relative paths correctly
+		var absPath string
+		if filepath.IsAbs(projectPath) {
+			absPath = projectPath
+		} else {
+			// For relative paths, resolve them relative to the original working directory
+			// This handles cases where installation records contain relative paths
+			originalDir := GetOriginalWorkingDir()
+			resolvedPath := filepath.Join(originalDir, projectPath)
+			var err error
+			absPath, err = filepath.Abs(resolvedPath)
+			if err != nil {
+				return fmt.Errorf("failed to resolve project path: %w", err)
+			}
+		}
+		targetDir = absPath
+		targetPath = filepath.Join(targetDir, "GEMINI.md")
+	}
+
+	// Ensure target directory exists
+	if err := os.MkdirAll(targetDir, 0755); err != nil {
+		return fmt.Errorf("failed to create gemini directory: %w", err)
+	}
+
+	// Collect content for each remaining rule
+	var ruleContents []string
+	var ruleNames []string
+
+	for _, rule := range rules {
+		// Find the compiled source file for this rule
+		compiledDir := filepath.Join("compiled", "gemini")
+		sourcePath := filepath.Join(compiledDir, rule.Rule+".md")
+
+		// Read the source content
+		content, err := os.ReadFile(sourcePath)
+		if err != nil {
+			// If we can't find the source file, skip this rule but don't fail
+			// This handles cases where the compiled files may have been cleaned up
+			continue
+		}
+
+		ruleContents = append(ruleContents, strings.TrimSpace(string(content)))
+		ruleNames = append(ruleNames, rule.Rule)
+	}
+
+	if len(ruleContents) == 0 {
+		// No content found to reinstall, just leave the file deleted
+		return nil
+	}
+
+	// Combine all rules into single content (same logic as installGeminiRules)
+	var combinedContent strings.Builder
+	combinedContent.WriteString("# AI Coding Instructions\n\n")
+	combinedContent.WriteString("This file contains custom instructions for Gemini CLI.\n\n")
+
+	for i, content := range ruleContents {
+		if i > 0 {
+			combinedContent.WriteString("\n---\n\n")
+		}
+		if len(ruleNames) > 1 {
+			combinedContent.WriteString(fmt.Sprintf("## %s\n\n", ruleNames[i]))
+		}
+		combinedContent.WriteString(content)
+		combinedContent.WriteString("\n")
+	}
+
+	// Write the combined content
+	if err := os.WriteFile(targetPath, []byte(combinedContent.String()), 0600); err != nil {
+		return fmt.Errorf("failed to write reinstalled gemini instructions: %w", err)
 	}
 
 	return nil

@@ -74,6 +74,7 @@ func TestGetTargetInstallDir(t *testing.T) {
 		{compiler.TargetClaude, "/test/project/.claude/commands"},
 		{compiler.TargetCline, "/test/project/.clinerules"},
 		{compiler.TargetCopilot, "/test/project/.github"},
+		{compiler.TargetGemini, "/test/project"},
 		{compiler.TargetRoo, "/test/project/.roo/rules"},
 	}
 
@@ -101,6 +102,7 @@ func TestGetProjectInstallDir(t *testing.T) {
 		{compiler.TargetClaude, "/project", "/project/.claude/commands"},
 		{compiler.TargetCline, "/project", "/project/.clinerules"},
 		{compiler.TargetCopilot, "/project", "/project/.github"},
+		{compiler.TargetGemini, "/project", "/project"},
 		{compiler.TargetRoo, "/project", "/project/.roo/rules"},
 	}
 
@@ -145,6 +147,7 @@ func TestGetGlobalInstallDir(t *testing.T) {
 		compiler.TargetClaude,
 		compiler.TargetCline,
 		compiler.TargetCopilot,
+		compiler.TargetGemini,
 		compiler.TargetRoo,
 	}
 
