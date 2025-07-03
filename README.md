@@ -8,8 +8,13 @@ including Cursor, Claude Code, Cline, GitHub Copilot, Gemini CLI, and Roo Code.
 **Stop duplicating your AI coding rules across multiple tools.**
 
 If you're using Cursor, Claude Code, Cline, GitHub Copilot, Gemini CLI, and Roo Code, you know the pain: maintaining the same coding
-standards and project rules across completely different file formats and locations. airuler solves this by letting you
-write your rules once as templates, then automatically generating the correct format for each AI assistant.
+standards and project rules across completely different file formats and locations.
+
+airuler solves this by letting you write your rules once as templates, then automatically:
+
+- **Generate** the correct format for each AI assistant
+- **Install** rules to the right locations (global configs or project directories)
+- **Update** all installations instantly when templates change
 
 ## Features
 
