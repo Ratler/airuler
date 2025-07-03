@@ -59,7 +59,7 @@ go build -o airuler
 
 ## Quick Start
 
-### 1. Initialize a new project
+### 1. Initialize a new template project
 
 ```bash
 airuler init
@@ -112,10 +112,10 @@ airuler deploy cursor
 airuler deploy --interactive
 ```
 
-### 4. Sync workflow (update vendors + compile + deploy)
+### 4. Sync workflow (update vendors + compile + update installed templates)
 
 ```bash
-# Full sync: update vendors → compile → deploy
+# Full sync: update vendors → compile → update installed temmplates
 airuler sync
 
 # Sync for specific target only
@@ -130,11 +130,11 @@ airuler sync --no-update
 | Target             | Format       | Location                             | Features                                            |
 | ------------------ | ------------ | ------------------------------------ | --------------------------------------------------- |
 | **Cursor**         | `.mdc` files | `.cursor/rules/`                     | YAML front matter, globs, alwaysApply               |
-| **Claude Code**    | `.md` files  | `.claude/commands/` or `CLAUDE.md`   | Memory/command modes, `$ARGUMENTS` placeholder      |
-| **Cline**          | `.md` files  | `.clinerules/`                       | Plain markdown rules                                |
-| **GitHub Copilot** | `.md` files  | `.github/copilot-instructions.md`    | Combined into single file                           |
-| **Gemini CLI**     | `.md` files  | `~/.gemini/GEMINI.md` or `GEMINI.md` | Combined into single file, global & project support |
-| **Roo Code**       | `.md` files  | `.roo/rules/`                        | Plain markdown rules                                |
+| **Claude Code**    | `.md`  files | `.claude/commands/` or `CLAUDE.md`   | Memory/command modes, `$ARGUMENTS` placeholder      |
+| **Cline**          | `.md`  files | `.clinerules/`                       | Plain markdown rules                                |
+| **GitHub Copilot** | `.md`  files | `.github/copilot-instructions.md`    | Combined into single file                           |
+| **Gemini CLI**     | `.md`  files | `~/.gemini/GEMINI.md` or `GEMINI.md` | Combined into single file, global & project support |
+| **Roo Code**       | `.md`  files | `.roo/rules/`                        | Plain markdown rules                                |
 
 ## Key Commands
 
@@ -146,7 +146,7 @@ airuler config init             # Initialize global config
 # Core Workflow
 airuler deploy                  # Compile templates and install fresh
 airuler deploy --interactive    # Interactive template selection
-airuler sync                    # Update vendors + compile + deploy
+airuler sync                    # Update vendors + compile + update installed templates
 airuler watch                   # Development mode with auto-compile
 
 # Management
