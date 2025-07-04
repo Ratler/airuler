@@ -31,7 +31,7 @@ func TestSyncCommand(t *testing.T) {
 
 		// Capture output
 		var output bytes.Buffer
-		rootCmd.SetOutput(&output)
+		rootCmd.SetOut(&output)
 		rootCmd.SetArgs([]string{"sync", "--help"})
 
 		// Execute command

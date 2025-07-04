@@ -420,7 +420,7 @@ func runSyncGitPull() error {
 	repo, err := gogit.PlainOpen(currentDir)
 	if err != nil {
 		// Not a git repo - silently continue
-		return nil
+		return nil //nolint:nilerr // Intentional: we want to continue gracefully when not in a git repo
 	}
 
 	// Get worktree to check status
@@ -507,27 +507,27 @@ func runSyncGitPull() error {
 		// Get the commit objects to show changed files
 		oldCommitObj, err := repo.CommitObject(oldCommit)
 		if err != nil {
-			return nil // Don't fail, just skip showing changes
+			return nil //nolint:nilerr // Intentional: skip showing changes if we can't get commit objects
 		}
 		newCommitObj, err := repo.CommitObject(newCommit)
 		if err != nil {
-			return nil // Don't fail, just skip showing changes
+			return nil //nolint:nilerr // Intentional: skip showing changes if we can't get commit objects
 		}
 
 		// Get the trees for both commits
 		oldTree, err := oldCommitObj.Tree()
 		if err != nil {
-			return nil
+			return nil //nolint:nilerr // Intentional: skip showing changes if we can't get trees
 		}
 		newTree, err := newCommitObj.Tree()
 		if err != nil {
-			return nil
+			return nil //nolint:nilerr // Intentional: skip showing changes if we can't get trees
 		}
 
 		// Calculate diff
 		changes, err := oldTree.Diff(newTree)
 		if err != nil {
-			return nil
+			return nil //nolint:nilerr // Intentional: skip showing changes if diff calculation fails
 		}
 
 		// Show condensed file list
