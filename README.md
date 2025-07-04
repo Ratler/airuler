@@ -112,17 +112,20 @@ airuler deploy cursor
 airuler deploy --interactive
 ```
 
-### 4. Sync workflow (update vendors + compile + update installed templates)
+### 4. Sync workflow (git pull + update vendors + compile + update installed templates)
 
 ```bash
-# Full sync: update vendors → compile → update installed temmplates
+# Full sync: git pull → update vendors → compile → update installed templates
 airuler sync
 
 # Sync for specific target only
 airuler sync claude
 
-# Skip vendor updates
+# Skip git pull and vendor updates
 airuler sync --no-update
+
+# Skip git pull only
+airuler sync --no-git-pull
 ```
 
 ## Target Support
@@ -130,11 +133,11 @@ airuler sync --no-update
 | Target             | Format       | Location                             | Features                                            |
 | ------------------ | ------------ | ------------------------------------ | --------------------------------------------------- |
 | **Cursor**         | `.mdc` files | `.cursor/rules/`                     | YAML front matter, globs, alwaysApply               |
-| **Claude Code**    | `.md`  files | `.claude/commands/` or `CLAUDE.md`   | Memory/command modes, `$ARGUMENTS` placeholder      |
-| **Cline**          | `.md`  files | `.clinerules/`                       | Plain markdown rules                                |
-| **GitHub Copilot** | `.md`  files | `.github/copilot-instructions.md`    | Combined into single file                           |
-| **Gemini CLI**     | `.md`  files | `~/.gemini/GEMINI.md` or `GEMINI.md` | Combined into single file, global & project support |
-| **Roo Code**       | `.md`  files | `.roo/rules/`                        | Plain markdown rules                                |
+| **Claude Code**    | `.md` files  | `.claude/commands/` or `CLAUDE.md`   | Memory/command modes, `$ARGUMENTS` placeholder      |
+| **Cline**          | `.md` files  | `.clinerules/`                       | Plain markdown rules                                |
+| **GitHub Copilot** | `.md` files  | `.github/copilot-instructions.md`    | Combined into single file                           |
+| **Gemini CLI**     | `.md` files  | `~/.gemini/GEMINI.md` or `GEMINI.md` | Combined into single file, global & project support |
+| **Roo Code**       | `.md` files  | `.roo/rules/`                        | Plain markdown rules                                |
 
 ## Key Commands
 

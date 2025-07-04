@@ -5,8 +5,10 @@ package cmd
 
 import (
 	"fmt"
+	"os"
 	"strings"
 
+	gogit "github.com/go-git/go-git/v5"
 	"github.com/ratler/airuler/internal/compiler"
 	"github.com/ratler/airuler/internal/config"
 	"github.com/ratler/airuler/internal/vendor"
@@ -18,6 +20,7 @@ var (
 	syncNoUpdate          bool
 	syncNoCompile         bool
 	syncNoDeploy          bool
+	syncNoGitPull         bool
 	syncScope             string
 	syncTargets           string
 	syncDryRun            bool
@@ -29,18 +32,20 @@ var syncCmd = &cobra.Command{
 	Use:   "sync [target]",
 	Short: "Sync vendors, compile templates, and update installations",
 	Long: `Sync performs the complete airuler workflow in one command:
-1. Update vendor repositories (unless --no-update)
-2. Compile templates (unless --no-compile)  
-3. Update existing installations (unless --no-deploy)
+1. Pull template repository (unless --no-update or --no-git-pull)
+2. Update vendor repositories (unless --no-update)
+3. Compile templates (unless --no-compile)  
+4. Update existing installations (unless --no-deploy)
 
-This replaces the common workflow: update → compile → update-installed
+This replaces the common workflow: git pull → update → compile → update-installed
 
 Examples:
-  airuler sync                      # Full sync: update vendors → compile → deploy
+  airuler sync                      # Full sync: pull → update vendors → compile → deploy
   airuler sync cursor               # Sync only for Cursor target
-  airuler sync --no-update          # Skip vendor updates (compile → deploy only)
-  airuler sync --no-compile         # Skip compilation (update vendors → deploy existing)
-  airuler sync --no-deploy          # Skip deployment (update vendors → compile only)
+  airuler sync --no-update          # Skip git pull and vendor updates (compile → deploy only)
+  airuler sync --no-git-pull        # Skip git pull only (update vendors → compile → deploy)
+  airuler sync --no-compile         # Skip compilation (pull → update vendors → deploy existing)
+  airuler sync --no-deploy          # Skip deployment (pull → update vendors → compile only)
   airuler sync --scope project      # Sync only project installations
   airuler sync --targets cursor,claude  # Sync only specific targets
   airuler sync --dry-run            # Show what would happen without doing it`,
@@ -61,6 +66,7 @@ func init() {
 	syncCmd.Flags().BoolVar(&syncNoUpdate, "no-update", false, "skip vendor updates")
 	syncCmd.Flags().BoolVar(&syncNoCompile, "no-compile", false, "skip template compilation")
 	syncCmd.Flags().BoolVar(&syncNoDeploy, "no-deploy", false, "skip deployment to installations")
+	syncCmd.Flags().BoolVar(&syncNoGitPull, "no-git-pull", false, "skip git pull of template repository")
 	syncCmd.Flags().StringVarP(&syncScope, "scope", "s", "all", "installation scope: global, project, or all")
 	syncCmd.Flags().StringVarP(&syncTargets, "targets", "t", "", "comma-separated list of targets (e.g., cursor,claude)")
 	syncCmd.Flags().BoolVarP(&syncDryRun, "dry-run", "n", false, "show what would happen without executing")
@@ -73,6 +79,9 @@ func runSync(targetFilter string) error {
 	}
 
 	var steps []string
+	if !syncNoUpdate && !syncNoGitPull {
+		steps = append(steps, "pull template repository")
+	}
 	if !syncNoUpdate {
 		steps = append(steps, "update vendors")
 	}
@@ -98,6 +107,13 @@ func runSync(targetFilter string) error {
 		fmt.Printf("🌍 Scope: %s\n", syncScope)
 	}
 	fmt.Println()
+
+	// Step 0: Git pull template repository
+	if !syncNoUpdate && !syncNoGitPull {
+		if err := runSyncGitPull(); err != nil {
+			return fmt.Errorf("git pull failed: %w", err)
+		}
+	}
 
 	// Step 1: Update vendors
 	if !syncNoUpdate {
@@ -386,6 +402,154 @@ func showInstallationStatus(targetFilter string) error {
 
 	for target, installs := range targetGroups {
 		fmt.Printf("  📊 %s: %d installation(s)\n", target, len(installs))
+	}
+
+	return nil
+}
+
+func runSyncGitPull() error {
+	fmt.Println("📥 Pulling template repository...")
+
+	// Get current working directory (already template dir due to root.go)
+	currentDir, err := os.Getwd()
+	if err != nil {
+		return fmt.Errorf("failed to get current directory: %w", err)
+	}
+
+	// Try to open as git repository
+	repo, err := gogit.PlainOpen(currentDir)
+	if err != nil {
+		// Not a git repo - silently continue
+		return nil
+	}
+
+	// Get worktree to check status
+	worktree, err := repo.Worktree()
+	if err != nil {
+		return fmt.Errorf("failed to get worktree: %w", err)
+	}
+
+	// Check if repository is dirty
+	status, err := worktree.Status()
+	if err != nil {
+		return fmt.Errorf("failed to get repository status: %w", err)
+	}
+
+	if !status.IsClean() {
+		fmt.Println("  ⚠️  Template repository has uncommitted changes, skipping git pull:")
+		// List changed files
+		for file, stat := range status {
+			if stat.Worktree != gogit.Unmodified {
+				var statusChar string
+				switch stat.Worktree {
+				case gogit.Modified:
+					statusChar = "M"
+				case gogit.Added:
+					statusChar = "A"
+				case gogit.Deleted:
+					statusChar = "D"
+				case gogit.Renamed:
+					statusChar = "R"
+				case gogit.Copied:
+					statusChar = "C"
+				case gogit.UpdatedButUnmerged:
+					statusChar = "U"
+				default:
+					statusChar = "?"
+				}
+				fmt.Printf("      %s %s\n", statusChar, file)
+			}
+		}
+		return nil
+	}
+
+	// Get current commit before pull
+	head, err := repo.Head()
+	if err != nil {
+		return fmt.Errorf("failed to get HEAD: %w", err)
+	}
+	oldCommit := head.Hash()
+
+	// Perform pull
+	err = worktree.Pull(&gogit.PullOptions{})
+	if err != nil {
+		if err == gogit.NoErrAlreadyUpToDate {
+			fmt.Println("  ✅ Template repository is already up to date")
+			return nil
+		}
+
+		// Pull failed - ask user if they want to continue
+		fmt.Printf("  ❌ Git pull failed: %v\n", err)
+		if !syncForce {
+			fmt.Print("  Continue anyway? [y/N]: ")
+			var response string
+			if _, err := fmt.Scanln(&response); err != nil {
+				return fmt.Errorf("sync cancelled by user")
+			}
+			if response != "y" && response != "Y" && response != "yes" {
+				return fmt.Errorf("sync cancelled by user")
+			}
+		}
+		return nil
+	}
+
+	// Get new commit after pull
+	newHead, err := repo.Head()
+	if err != nil {
+		return fmt.Errorf("failed to get new HEAD: %w", err)
+	}
+	newCommit := newHead.Hash()
+
+	// Show summary if commits changed
+	if oldCommit != newCommit {
+		fmt.Printf("  ✅ Pulled changes from %s to %s\n", oldCommit.String()[:8], newCommit.String()[:8])
+
+		// Get the commit objects to show changed files
+		oldCommitObj, err := repo.CommitObject(oldCommit)
+		if err != nil {
+			return nil // Don't fail, just skip showing changes
+		}
+		newCommitObj, err := repo.CommitObject(newCommit)
+		if err != nil {
+			return nil // Don't fail, just skip showing changes
+		}
+
+		// Get the trees for both commits
+		oldTree, err := oldCommitObj.Tree()
+		if err != nil {
+			return nil
+		}
+		newTree, err := newCommitObj.Tree()
+		if err != nil {
+			return nil
+		}
+
+		// Calculate diff
+		changes, err := oldTree.Diff(newTree)
+		if err != nil {
+			return nil
+		}
+
+		// Show condensed file list
+		if len(changes) > 0 {
+			fmt.Println("  📝 Changed files:")
+			for _, change := range changes {
+				from, to, err := change.Files()
+				if err != nil {
+					continue // Skip files we can't process
+				}
+				if from == nil && to != nil {
+					// Added file
+					fmt.Printf("      + %s\n", to.Name)
+				} else if from != nil && to == nil {
+					// Deleted file
+					fmt.Printf("      - %s\n", from.Name)
+				} else if from != nil && to != nil {
+					// Modified file
+					fmt.Printf("      M %s\n", to.Name)
+				}
+			}
+		}
 	}
 
 	return nil

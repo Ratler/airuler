@@ -70,16 +70,17 @@ ______________________________________________________________________
 
 ### `airuler sync [target]`
 
-Sync vendors, compile templates, and update installations. This replaces the workflow: update → compile → update-installed.
+Sync template repository, vendors, compile templates, and update installations. This replaces the workflow: git pull → update → compile → update-installed.
 
 **Usage:**
 
 ```bash
-airuler sync                      # Full sync: update vendors → compile → deploy
+airuler sync                      # Full sync: git pull → update vendors → compile → deploy
 airuler sync cursor               # Sync only for Cursor target
-airuler sync --no-update          # Skip vendor updates (compile → deploy only)
-airuler sync --no-compile         # Skip compilation (update vendors → deploy existing)
-airuler sync --no-deploy          # Skip deployment (update vendors → compile only)
+airuler sync --no-update          # Skip git pull and vendor updates (compile → deploy only)
+airuler sync --no-git-pull        # Skip git pull only (update vendors → compile → deploy)
+airuler sync --no-compile         # Skip compilation (git pull → update vendors → deploy existing)
+airuler sync --no-deploy          # Skip deployment (git pull → update vendors → compile only)
 airuler sync --scope project      # Sync only project installations
 airuler sync --targets cursor,claude  # Sync only specific targets
 airuler sync --dry-run            # Show what would happen without doing it
@@ -91,15 +92,16 @@ airuler sync --dry-run            # Show what would happen without doing it
 
 **Flags:**
 
-| Flag           | Short | Type   | Description                                           | Default |
-| -------------- | ----- | ------ | ----------------------------------------------------- | ------- |
-| `--no-update`  |       | bool   | Skip vendor updates                                   | `false` |
-| `--no-compile` |       | bool   | Skip template compilation                             | `false` |
-| `--no-deploy`  |       | bool   | Skip deployment to installations                      | `false` |
-| `--scope`      | `-s`  | string | Installation scope: global, project, or all           | `all`   |
-| `--targets`    | `-t`  | string | Comma-separated list of targets (e.g., cursor,claude) |         |
-| `--dry-run`    | `-n`  | bool   | Show what would happen without executing              | `false` |
-| `--force`      | `-f`  | bool   | Skip confirmation prompts                             | `false` |
+| Flag            | Short | Type   | Description                                           | Default |
+| --------------- | ----- | ------ | ----------------------------------------------------- | ------- |
+| `--no-update`   |       | bool   | Skip vendor updates (also skips git pull)             | `false` |
+| `--no-git-pull` |       | bool   | Skip git pull of template repository                  | `false` |
+| `--no-compile`  |       | bool   | Skip template compilation                             | `false` |
+| `--no-deploy`   |       | bool   | Skip deployment to installations                      | `false` |
+| `--scope`       | `-s`  | string | Installation scope: global, project, or all           | `all`   |
+| `--targets`     | `-t`  | string | Comma-separated list of targets (e.g., cursor,claude) |         |
+| `--dry-run`     | `-n`  | bool   | Show what would happen without executing              | `false` |
+| `--force`       | `-f`  | bool   | Skip confirmation prompts                             | `false` |
 
 ______________________________________________________________________
 
@@ -450,7 +452,7 @@ airuler deploy                  # Deploy templates to AI tools
 ### Update Workflow
 
 ```bash
-airuler sync                    # Update vendors → compile → deploy
+airuler sync                    # Git pull → update vendors → compile → deploy
 ```
 
 ### Development Workflow
